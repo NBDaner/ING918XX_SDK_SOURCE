@@ -82,15 +82,25 @@ static int att_write_callback(hci_con_handle_t connection_handle, uint16_t att_h
         switch (buffer[0])
         {
         case CMD_DIGITAL_GAIN:
+            platform_printf("CMD_DIGITAL_GAIN事件::");
             mic_dig_gain = (int8_t)buffer[1];
+            platform_printf("mic_dia_gain=%d ",mic_dig_gain);
+            platform_printf("...OK\r\n\n");
             break;
         case CMD_MIC_OPEN:
             next_block = 0;
             if (audio_notify_enable)
-                audio_start();
+                platform_printf("CMD_MIC_OPEN事件::");
+                platform_printf("函数地址：[%x]\r\n",audio_t.audio_dev_start);
+                audio_t.audio_dev_start();
+				//audio_start();
+                platform_printf("...OK\r\n\n");
             break;
         case CMD_MIC_CLOSE:
-            audio_stop();
+            platform_printf("CMD_MIC_CLOSE事件::");
+            audio_t.audio_dev_stop();
+            platform_printf("...OK\r\n\n");  
+            //audio_stop();
             break;
         }
         
@@ -105,7 +115,7 @@ static int att_write_callback(hci_con_handle_t connection_handle, uint16_t att_h
         else
         {
             audio_notify_enable = 0;
-            audio_stop();
+            audio_t.audio_dev_stop();
         }
         return 0;
 
@@ -121,15 +131,19 @@ void audio_trigger_send(void)
     if (audio_notify_enable)
         btstack_push_user_msg(USER_MSG_ID_REQUEST_SEND_AUDIO, NULL, 0);
 }
-
+static uint64_t audio_timer_tick_ms = 0;
 static void send_audio_data()
 {
+    platform_printf("send_audio_data()\r\n");
     if (!audio_notify_enable)
         return;
 
     uint16_t curr = audio_get_curr_block();
     if (next_block != curr)
     {
+        uint64_t now = platform_get_us_time()/1000000;
+        platform_printf("att_server_notify(%d) diff:%dms\r\n", now, (now-audio_timer_tick_ms));     
+        audio_timer_tick_ms = now;  
         att_server_notify(handle_send, HANDLE_VOICE_OUTPUT, audio_get_block_buff(next_block), VOICE_BUF_BLOCK_SIZE);
         next_block++;
         if (next_block >= VOICE_BUF_BLOCK_NUM) next_block = 0;
@@ -139,7 +153,7 @@ static void send_audio_data()
 }
 
 static void setup_adv(void);
-const bd_addr_t rand_addr = {0xC3, 0x8E,0x05,0x3E,0x7E,0xA3};
+const bd_addr_t rand_addr = {0xC3,0x8E,0x05,0x3E,0x7E,0xA9};
 
 static void user_msg_handler(uint32_t msg_id, void *data, uint16_t size)
 {
@@ -211,7 +225,7 @@ static void user_packet_handler(uint8_t packet_type, uint16_t channel, const uin
 
     case HCI_EVENT_DISCONNECTION_COMPLETE:
         audio_notify_enable = 0;
-        audio_stop();
+        audio_t.audio_dev_stop();
         handle_send = INVALID_HANDLE;
         setup_adv();
         break;

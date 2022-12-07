@@ -1,4 +1,5 @@
 #include "peripheral_dma.h"
+#include <stdlib.h>
 
 #if INGCHIPS_FAMILY == INGCHIPS_FAMILY_916
 
