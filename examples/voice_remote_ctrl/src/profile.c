@@ -82,25 +82,23 @@ static int att_write_callback(hci_con_handle_t connection_handle, uint16_t att_h
         switch (buffer[0])
         {
         case CMD_DIGITAL_GAIN:
-            platform_printf("CMD_DIGITAL_GAIN事件::");
+            platform_printf("CMD_DIGITAL_GAIN::");
             mic_dig_gain = (int8_t)buffer[1];
             platform_printf("mic_dia_gain=%d ",mic_dig_gain);
-            platform_printf("...OK\r\n\n");
             break;
         case CMD_MIC_OPEN:
             next_block = 0;
             if (audio_notify_enable)
-                platform_printf("CMD_MIC_OPEN事件::");
-                platform_printf("函数地址：[%x]\r\n",audio_t.audio_dev_start);
+                platform_printf("CMD_MIC_OPEN::");
+                platform_printf("FUNC_ADDR：[%x]\r\n",audio_t.audio_dev_start);
                 audio_t.audio_dev_start();
-				//audio_start();
-                platform_printf("...OK\r\n\n");
+                platform_printf(".\r\n\n");
             break;
         case CMD_MIC_CLOSE:
-            platform_printf("CMD_MIC_CLOSE事件::");
+            platform_printf("CMD_MIC_CLOSE::");
+            platform_printf("FUNC_ADDR：[%x]\r\n",audio_t.audio_dev_stop);
             audio_t.audio_dev_stop();
-            platform_printf("...OK\r\n\n");  
-            //audio_stop();
+            platform_printf(".\r\n\n");  
             break;
         }
         
@@ -134,16 +132,13 @@ void audio_trigger_send(void)
 static uint64_t audio_timer_tick_ms = 0;
 static void send_audio_data()
 {
-    platform_printf("send_audio_data()\r\n");
+    //platform_printf("send_audio_data()\r\n");
     if (!audio_notify_enable)
         return;
 
     uint16_t curr = audio_get_curr_block();
     if (next_block != curr)
     {
-        uint64_t now = platform_get_us_time()/1000000;
-        platform_printf("att_server_notify(%d) diff:%dms\r\n", now, (now-audio_timer_tick_ms));     
-        audio_timer_tick_ms = now;  
         att_server_notify(handle_send, HANDLE_VOICE_OUTPUT, audio_get_block_buff(next_block), VOICE_BUF_BLOCK_SIZE);
         next_block++;
         if (next_block >= VOICE_BUF_BLOCK_NUM) next_block = 0;

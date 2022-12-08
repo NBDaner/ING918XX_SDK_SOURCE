@@ -70,7 +70,7 @@ void enc_output_cb(uint8_t output, void *param)
     byte_index++;
     if (byte_index >= VOICE_BUF_BLOCK_SIZE)
     {
-        platform_printf("block = %d  send_trigger()\r\n", block_index);
+        //platform_printf("block = %d  send_trigger()\r\n", block_index);
         block_index++;
         audio_trigger_send();
         if (block_index >= VOICE_BUF_BLOCK_NUM)
@@ -152,9 +152,7 @@ void audio_start(void)
 #endif
     block_index = 0;
     byte_index = 0;
-    platform_printf("1\r\n");
     audio_input_start();
-    platform_printf("2\r\n");
 }
 
 void audio_stop(void)
@@ -226,7 +224,7 @@ static void audio_sbc_task(void *pdata)
         if (xQueueReceive(xSampleQueue, &index, portMAX_DELAY ) != pdPASS)
             continue;
         if (xQueueIsQueueFullFromISR(xSampleQueue) != pdFALSE)
-            platform_printf("Full                  \r\n");
+            platform_printf("Full\r\n");
         
         inp = (sbc_sample_t *)(sample_buf[index]);    //获取单行数首地址        
         
@@ -244,12 +242,9 @@ static void audio_sbc_task(void *pdata)
                 sample = fir_push_run(&fir, sample);
 #endif
         }
-        //platform_printf("3\r\n");
         encodelen = sbc_encode(&sbc, inp, codesize, outp, framelen, &encoded);
-        //platform_printf("4\r\n");
         if(encodelen == codesize) 
         {
-            //platform_printf("OK!!!\r\n");
             for (int i=0; i<framelen; i++) {
                 enc_output_cb((uint8_t)(*(outp + i)), 0); 
             } 
@@ -340,20 +335,18 @@ void audio_init(void)
 {
     //结构体初始化
     enc_state_init(&audio_t);
-    platform_printf("...OK\r\n\n");
+    platform_printf("\n编码器状态初始化...OK\r\n\n");
     
     //创建音频输ru数组
     //create_input_data_buff(audio_t.sample_buf_num, audio_t.sample_buf_size, sample_buf);
-    platform_printf("...OK\r\n\n");
+    //platform_printf("...OK\r\n\n");
 
     //创建音频输入数组
-    platform_printf("...OK\r\n\n");
+    //platform_printf("...OK\r\n\n");
 
     //注册task函数
     audio_task_register();
-    platform_printf("...OK\r\n\n");
-
-
+    platform_printf("\n音频任务函数注册...OK\r\n");
 
     xSampleQueue = xQueueCreateStatic(QUEUE_LENGTH,
                                  ITEM_SIZE,
@@ -367,14 +360,12 @@ void audio_init(void)
                NULL);
     
     audio_input_setup();
-    platform_printf("初始化配置完成...OK\r\n\n");
+    platform_printf("初始化配置...OK\r\n");
 }
 
 static void enc_state_init(audio_enc_t *audio)
 {
-    platform_printf("%s函数调用: 初始化接口函数",__func__);
     audio->audio_dev_start = audio_start;
-    platform_printf("[%x] ",audio->audio_dev_start); 
     audio->audio_dev_stop = audio_stop;
 
 #if (AUDIO_CODEC_ALGORITHM == AUDIO_CODEC_ALGORITHM_ADPCM)
@@ -384,7 +375,7 @@ static void enc_state_init(audio_enc_t *audio)
     audio->voice_buf_block_size = adpcm_priv.voice_buf_block_size;
     audio->sample_buf_num = adpcm_priv.sample_buf_num;
     audio->sample_buf_size = adpcm_priv.sample_buf_size;
-    platform_printf("block_num=[%d]\r\nblock_size=[%d]\r\nbuf_num=[%d]\r\nbuf_size=[%d]",audio->voice_buf_block_num, 
+    platform_printf("block_num=[%d]  block_size=[%d]\r\nbuf_num=[%d]  buf_size=[%d]",audio->voice_buf_block_num, 
                                     audio->voice_buf_block_size, audio->sample_buf_num, audio->sample_buf_size);
 #elif (AUDIO_CODEC_ALGORITHM == AUDIO_CODEC_ALGORITHM_SBC)
     platform_printf("[编码器选择-->SBC]\r\n");
@@ -397,7 +388,7 @@ static void enc_state_init(audio_enc_t *audio)
     audio->voice_buf_block_size = sbc_priv.voice_buf_block_size;
     audio->sample_buf_num = sbc_priv.sample_buf_num;
     audio->sample_buf_size = sbc_priv.sample_buf_size;
-    platform_printf("block_num=[%d]\r\nblock_size=[%d]\r\nbuf_num=[%d]\r\nbuf_size=[%d]",audio->voice_buf_block_num, 
+    platform_printf("block_num=[%d]  block_size=[%d]\r\nbuf_num=[%d]  buf_size=[%d]",audio->voice_buf_block_num, 
                                     audio->voice_buf_block_size, audio->sample_buf_num, audio->sample_buf_size);
 #endif
 }
