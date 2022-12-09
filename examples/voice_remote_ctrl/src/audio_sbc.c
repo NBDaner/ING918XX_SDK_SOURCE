@@ -7,7 +7,7 @@
 //include <sys/types.h>
 #include <limits.h>
 
-#include "audio.h"
+#include "audio_adpcm.h"
 #include "ingsoc.h"
 
 #include "FreeRTOS.h"
@@ -1097,11 +1097,6 @@ SBC_EXPORT int sbc_encode(sbc_t *sbc, void *input, int input_len,
 	now = platform_get_us_time()/1000000;
 	platform_printf("sbc_pack_frame(%d) diff:%dms\r\n", now, (now-pack_timer_tick_ms));     
 	framelen = 24;
-
-	for(int i=0; i<framelen; i++)
-	{
-		*(((uint8_t *)output) + i) = i;
-	}
 
 	//printf("codesize = %d length = %d\r\n", priv->frame.codesize, priv->frame.length);
 	//printf("samples = %d framelen = %d\r\n", samples, framelen);
