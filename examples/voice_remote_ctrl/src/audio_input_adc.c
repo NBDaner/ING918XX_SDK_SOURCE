@@ -6,7 +6,7 @@
 
 #include "app_cfg.h"
 
-#include "audio.h"
+#include "audio_adpcm.h"
 
 #if (INGCHIPS_FAMILY == INGCHIPS_FAMILY_918)
 
@@ -69,6 +69,10 @@ static uint32_t DMA_cb_isr(void *user_data)
 		if (ADC_GetDataChannel(buff[i]) != ADC_CHANNEL) continue;
         uint16_t sample = ADC_GetData(buff[i]);
 		// do something with 'sample'
+        //将此处的输出打印到串口
+        printf("%x ",sample);
+
+        audio_rx_sample(sample);
     }
     return 0;
 }
