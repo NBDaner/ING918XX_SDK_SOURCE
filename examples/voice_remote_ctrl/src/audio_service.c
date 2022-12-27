@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "audio_service.h"
 #include "audio_sbc.h" 
-#include "audio.h"
+#include "audio_adpcm.h"
 #include "ingsoc.h"
 
 #include "FreeRTOS.h"
@@ -15,7 +15,7 @@
 #define AUDIO_CODEC_ALGORITHM_ADPCM     0
 #define AUDIO_CODEC_ALGORITHM_SBC       1
 #define AUDIO_CODEC_ALGORITHM_LC3       2
-#define AUDIO_CODEC_ALGORITHM   AUDIO_CODEC_ALGORITHM_SBC
+#define AUDIO_CODEC_ALGORITHM   AUDIO_CODEC_ALGORITHM_ADPCM
 
 extern void audio_input_setup(void);
 extern void audio_input_start(void);

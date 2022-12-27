@@ -164,7 +164,7 @@ int app_main()
     platform_set_evt_callback(PLATFORM_CB_EVT_QUERY_DEEP_SLEEP_ALLOWED, query_deep_sleep_allowed, NULL);
     // setup putc handle
     platform_set_evt_callback(PLATFORM_CB_EVT_PUTC, (f_platform_evt_cb)cb_putc, NULL);
-
+    printf("音频项目初始化...begin\n");
     audio_init();
     printf("音频项目初始化...OK\n");
 
