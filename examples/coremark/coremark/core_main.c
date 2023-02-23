@@ -45,12 +45,19 @@ void *iterate(void *pres) {
 	res->crcmatrix=0;
 	res->crcstate=0;
 
+	printf("0\n");
 	for (i=0; i<iterations; i++) {
+		printf("%d\n",i);
 		crc=core_bench_list(res,1);
+		// printf("2\n");
 		res->crc=crcu16(crc,res->crc);
+		// printf("3\n");
 		crc=core_bench_list(res,-1);
+		// printf("4\n");
 		res->crc=crcu16(crc,res->crc);
+		// printf("5\n");
 		if (i==0) res->crclist=res->crc;
+		// printf("6\n");
 	}
 	return NULL;
 }
@@ -226,7 +233,9 @@ MAIN_RETURN_TYPE main(int argc, char *argv[]) {
 		core_stop_parallel(&results[i]);
 	}
 #else
+printf("iterate\n");
 	iterate(&results[0]);
+printf("iterate end\n");
 #endif
 	stop_time();
 	total_time=get_time();

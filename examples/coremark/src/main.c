@@ -77,6 +77,9 @@ void setup_peripherals(void)
 #elif (INGCHIPS_FAMILY == INGCHIPS_FAMILY_916)
     cube_setup_peripherals();
 #endif
+    // SYSCTRL_CacheControl(SYSCTRL_MEM_BLOCK_AS_SYS_MEM ,SYSCTRL_MEM_BLOCK_AS_CACHE );
+    SYSCTRL_CacheControl(SYSCTRL_MEM_BLOCK_AS_CACHE ,SYSCTRL_MEM_BLOCK_AS_SYS_MEM );
+    // SYSCTRL_CacheControl(SYSCTRL_MEM_BLOCK_AS_SYS_MEM ,SYSCTRL_MEM_BLOCK_AS_SYS_MEM );
 }
 
 uint32_t on_deep_sleep_wakeup(void *dummy, void *user_data)
