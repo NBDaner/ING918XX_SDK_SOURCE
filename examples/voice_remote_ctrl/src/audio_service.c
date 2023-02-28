@@ -1,5 +1,7 @@
+#include <stdlib.h>
 #include "audio_service.h"
 #include "audio_adpcm.h"
+#include "audio_sbc.h"
 #include "ingsoc.h"
 
 #include "FreeRTOS.h"
@@ -13,6 +15,29 @@ extern void audio_input_start(void);
 extern void audio_input_stop(void);
 
 static adpcm_enc_t enc;
+static sbc_t sbc;
+audio_enc_t audio_t;
+
+//adpcm缓存参数结构体定义
+static adpcm_priv_t adpcm_priv=
+{
+    .voice_buf_block_num = 4100 / 150,
+    .voice_buf_block_size = 150,
+
+    .sample_buf_num = 2,
+    .sample_buf_size = 20,
+};
+
+//sbc缓存参数结构体定义
+static sbc_priv_t sbc_priv=
+{
+    .voice_buf_block_num = 20,
+    .voice_buf_block_size = 60,
+
+    .sample_buf_num = 2,
+    .sample_buf_size = 32,    
+};
+
 
 uint8_t data_buffer[VOICE_BUF_BLOCK_NUM][VOICE_BUF_BLOCK_SIZE] = {0};
 uint16_t block_index;
@@ -108,9 +133,12 @@ pcm_sample_t fir_push_run(fir_t *fir, pcm_sample_t x)
 
 void audio_start(void)
 {
+    platform_printf("[%x] %s函数调用:启动/重启音频输入",audio_t.audio_dev_start, __func__);     
     sample_buf_index = 0;
     sample_index = 0;
+#if (AUDIO_ENCODER_SELECTION == AUDIO_ENCODER_ADPCM)
     adpcm_enc_init(&enc, enc_output_cb, 0);
+#endif
     block_index = 0;
     byte_index = 0;
     audio_input_start();
@@ -118,11 +146,12 @@ void audio_start(void)
 
 void audio_stop(void)
 {
+    platform_printf("%s函数调用: 停止音频输入",__func__); 
     xQueueReset(xSampleQueue);
     audio_input_stop();
 }
 
-static void audio_task(void *pdata)
+static void audio_adpcm_task(void *pdata)
 {
 #if (OVER_SAMPLING_MASK != 0)
     int oversample_cnt = 0;
@@ -157,20 +186,61 @@ static void audio_task(void *pdata)
     }
 }
 
-void audio_init(void)
+static void audio_sbc_task(void *pdata)
 {
-    xSampleQueue = xQueueCreateStatic(QUEUE_LENGTH,
-                                 ITEM_SIZE,
-                                 ucQueueStorageArea,
-                                 &xStaticSampleQueue);
-    xTaskCreate(audio_task,
-               "b",
-               150,
-               NULL,
-               (configMAX_PRIORITIES - 1),
-               NULL);
+    int size, codesize, framelen, encodelen,encoded;
 
-    audio_input_setup();
+    //获取编码一个frame所需的原始数据量
+    codesize = sbc_get_codesize(&sbc);
+    platform_printf("codesize = %d\r\n", codesize); 
+
+    //一帧编码后的数据长度
+    framelen = sbc_get_frame_length(&sbc);
+    platform_printf("framelen = %d\r\n",framelen); 
+
+    sbc_sample_t *inp, *outp;
+    outp = malloc(framelen * sizeof(sbc_sample_t));
+
+#if (OVER_SAMPLING_MASK != 0)
+    int oversample_cnt = 0;
+#endif
+
+    for(;;)
+    {
+        int16_t index;
+        int i;
+
+        //若此次无数据，则进入下一次循环
+        if (xQueueReceive(xSampleQueue, &index, portMAX_DELAY ) != pdPASS)
+            continue;
+        if (xQueueIsQueueFullFromISR(xSampleQueue) != pdFALSE)
+            platform_printf("Full\r\n");
+        
+        inp = (sbc_sample_t *)(sample_buf[index]);    //获取单行数首地址        
+        
+        for (i = 0; i < audio_t.sample_buf_size; i++)
+        {
+            sbc_sample_t sample = inp[i];
+#if (OVER_SAMPLING_MASK != 0)
+            oversample_cnt = (oversample_cnt + 1) & OVER_SAMPLING_MASK;
+            if (oversample_cnt != 0)
+            {
+                fir_push(&fir, sample);
+                continue;
+            }
+            else
+                sample = fir_push_run(&fir, sample);
+#endif
+        }
+        encodelen = sbc_encode(&sbc, inp, codesize, outp, framelen, &encoded);
+        if(encodelen == codesize) 
+        {
+            for (int i=0; i<framelen; i++) {
+                enc_output_cb((uint8_t)(*(outp + i)), 0); 
+            } 
+        }
+ 
+    }
 }
 
 uint16_t audio_get_curr_block(void)
@@ -202,4 +272,78 @@ void audio_rx_sample(pcm_sample_t sample)
             sample_buf_index = 0;
         sample_index = 0;
     }
+}
+
+static void enc_state_init(audio_enc_t *audio);
+static void audio_task_register();
+
+void audio_init(void)
+{
+    //结构体初始化
+    enc_state_init(&audio_t);
+    platform_printf("\n编码器状态初始化...OK\r\n\n");
+
+    //注册task函数
+    audio_task_register();
+    platform_printf("\n音频任务函数注册...OK\r\n");
+
+    xSampleQueue = xQueueCreateStatic(QUEUE_LENGTH,
+                                 ITEM_SIZE,
+                                 ucQueueStorageArea,
+                                 &xStaticSampleQueue);
+    xTaskCreate(audio_enc_task,
+               "b",
+               1024,
+               NULL,
+               (configMAX_PRIORITIES - 1),
+               NULL);
+
+    audio_input_setup();
+    platform_printf("初始化配置...OK\r\n");
+}
+
+static void enc_state_init(audio_enc_t *audio)
+{
+    audio->audio_dev_start = audio_start;
+    audio->audio_dev_stop = audio_stop;
+
+#if (AUDIO_ENCODER_SELECTION == AUDIO_ENCODER_ADPCM)
+    platform_printf("[编码器选择-->ADPCM]\r\n");
+    platform_printf("编码器参数表如下：\r\n");
+    audio->voice_buf_block_num = adpcm_priv.voice_buf_block_num;
+    audio->voice_buf_block_size = adpcm_priv.voice_buf_block_size;
+    audio->sample_buf_num = adpcm_priv.sample_buf_num;
+    audio->sample_buf_size = adpcm_priv.sample_buf_size;
+    platform_printf("block_num=[%d]  block_size=[%d]\r\nbuf_num=[%d]  buf_size=[%d]",audio->voice_buf_block_num, 
+                                    audio->voice_buf_block_size, audio->sample_buf_num, audio->sample_buf_size);
+#elif (AUDIO_ENCODER_SELECTION == AUDIO_ENCODER_SBC)
+    platform_printf("[编码器选择-->SBC]\r\n");
+    sbc_init(&sbc, 0L);
+    sbc_priv.voice_buf_block_size = sbc_get_frame_length(&sbc);
+    sbc_priv.voice_buf_block_num = 4100 / sbc_priv.voice_buf_block_size;
+    sbc_priv.sample_buf_size = sbc_get_codesize(&sbc);
+    platform_printf("编码器参数表如下：\r\n");
+    audio->voice_buf_block_num = sbc_priv.voice_buf_block_num;
+    audio->voice_buf_block_size = sbc_priv.voice_buf_block_size;
+    audio->sample_buf_num = sbc_priv.sample_buf_num;
+    audio->sample_buf_size = sbc_priv.sample_buf_size;
+    platform_printf("block_num=[%d]  block_size=[%d]\r\nbuf_num=[%d]  buf_size=[%d]",audio->voice_buf_block_num, 
+                                    audio->voice_buf_block_size, audio->sample_buf_num, audio->sample_buf_size);
+#elif (AUDIO_ENCODER_SELECTION == AUDIO_ENCODER_LC3)
+#warning lc3 encoder is not supported for now!
+#endif
+}
+
+static void audio_task_register()
+{
+#if (AUDIO_ENCODER_SELECTION == AUDIO_ENCODER_ADPCM)
+    audio_enc_task = audio_adpcm_task;
+    platform_printf("%s函数调用: 注册adpcm编码器task函数",__func__); 
+#elif (AUDIO_ENCODER_SELECTION == AUDIO_ENCODER_SBC)
+    audio_enc_task = audio_sbc_task;
+    platform_printf("%s函数调用: 注册sbc编码器task函数",__func__); 
+#elif (AUDIO_ENCODER_SELECTION == AUDIO_ENCODER_LC3)
+    audio_enc_task = audio_lc3_task;
+    platform_printf("%s函数调用: 注册adpcm编码器task函数",__func__); 
+#endif  
 }
