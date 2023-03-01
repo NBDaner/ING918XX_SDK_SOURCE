@@ -80,9 +80,31 @@ extern "C" {
 #endif//inline
 
 /**
- * @brief SBC frame header context
+ * @brief SBC frame encoder structure
  */
-typedef struct sbc_frame_header
+typedef struct _sbc_framer
+{
+    int8_t   blocks;                    /**< block number       */
+    int8_t   subbands;                  /**< subbands number    */
+    uint8_t  join;                      /**< bit number x set means joint stereo has been used in sub-band x */
+    uint8_t  bitpool;                   /**< indicate the size of the bit allocation pool that has been used for encoding the stream */
+
+    int8_t   channel_mode;              /**< channel mode       */
+    int8_t   sample_rate_index;         /**< sample rate index, 0:16000, 1:32000, 2:44100, 3:48000 */
+    int8_t   allocation_method;         /**< allocation method  */
+    int8_t   reserved8;                 /**< dummy, reserved for byte align */
+
+    int8_t   bits[2][8];                /**< calculate result by bit allocation. */
+
+    int8_t   scale_factor[2][8];        /**< only the lower 4 bits of every element are to be used */
+
+    int32_t  mem[2][8];                 /**< Memory used as bit need and levels */
+}sbc_framer;
+
+/**
+ * @brief SBC frame header structure
+ */
+typedef struct _sbc_frame_header
 {
     #if defined(__BIG_ENDIAN__)
     //big endianness
@@ -105,7 +127,15 @@ typedef struct sbc_frame_header
     uint32_t bitpool            :8;
     uint32_t crc_check          :8;
     #endif
-}sbc_frame_header_t;
+}sbc_frame_header;
+
+/**
+ * @brief  CRC8 calculation
+ * @param  data  data buffer to do calculation
+ * @param  len   data buffer length in bits
+ * @return CRC8 value
+ */
+uint8_t  sbc_crc8(const uint8_t* data, uint32_t len);
 
 #ifdef __cplusplus
 }

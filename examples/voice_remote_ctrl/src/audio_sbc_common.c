@@ -52,7 +52,7 @@ static const uint8_t sbc_crc_table[256] = {
 	0x97, 0x8A, 0xAD, 0xB0, 0xE3, 0xFE, 0xD9, 0xC4
 };
 
-static uint8_t sbc_crc8(const uint8_t *data, int len)
+static uint8_t sbc_crc8(const uint8_t *data, uint32_t len)
 {
 	uint8_t crc = 0x0f;
 	int i;
@@ -76,7 +76,7 @@ static uint8_t sbc_crc8(const uint8_t *data, int len)
 	return crc;
 }
 
-void sbc_bit_allocation(const struct sbc_frame *frame)
+void sbc_bit_allocation(const struct sbc_frame_t *sbc)
 {
     int32_t  ch;
     int32_t  sb;
@@ -89,4 +89,327 @@ void sbc_bit_allocation(const struct sbc_frame *frame)
     int8_t*  sf;
     int8_t*  bits;
     int32_t* bitneed;
+
+    if((sbc->channel_mode == SBC_CHANNEL_MODE_MONO) || (sbc->channel_mode == SBC_CHANNEL_MODE_DUAL_CHANNEL))
+    {
+        for(ch = 0; ch < sbc->channel_mode + 1; ch++)
+        {
+            sf      = sbc->scale_factor[ch];
+            bits    = sbc->bits[ch];
+            bitneed = sbc->mem[ch];
+
+            max_bitneed = 0;
+    
+            if(sbc->allocation_method == SBC_ALLOCATION_METHOD_SNR)
+            {
+                for(sb = 0; sb < sbc->subbands; sb++)
+                {
+                    bitneed[sb] = sf[sb];
+                    if(bitneed[sb] > max_bitneed)
+                    {
+                        max_bitneed = bitneed[sb];
+                    }
+                }
+            }
+            else
+            {
+                uint8_t sri = sbc->sample_rate_index;
+
+                for(sb = 0; sb<sbc->subbands; sb++)
+                {
+                    if(sf[sb] == 0)
+                    {
+                        bitneed[sb] = -5;
+                    }
+                    else
+                    {
+                        if(sbc->subbands == 4)
+                        {
+                            loudness = sf[sb] - SBC_COMMON_OFFSET4[sri][sb];
+                        }
+                        else
+                        {
+                            loudness = sf[sb] - SBC_COMMON_OFFSET8[sri][sb];
+                        }
+
+                        if(loudness > 0)
+                        {
+                            bitneed[sb] = loudness / 2;
+                        }
+                        else
+                        {
+                            bitneed[sb] = loudness;
+                        }
+                    }
+
+                    if(bitneed[sb] > max_bitneed)
+                    {
+                        max_bitneed = bitneed[sb];
+                    }
+                }
+            }
+
+            bitcount   = 0;
+            slicecount = 0;
+            bitslice   = max_bitneed + 1;
+
+            do
+            {
+                bitslice--;
+                bitcount += slicecount;
+                slicecount = 0;
+
+                for(sb = 0; sb < sbc->subbands; sb++)
+                {
+                    if((bitneed[sb] > bitslice + 1) && (bitneed[sb] < bitslice + 16))
+                    {
+                        slicecount++;
+                    }
+                    else if(bitneed[sb] == bitslice + 1)
+                    {
+                        slicecount += 2;
+                    }
+                }
+            }while(bitcount + slicecount < sbc->bitpool);
+
+            if(bitcount + slicecount == sbc->bitpool)
+            {
+                bitcount += slicecount;
+                bitslice--;
+            }
+
+            for(sb = 0; sb < sbc->subbands; sb++)
+            {
+                if(bitneed[sb] < bitslice + 2)
+                {
+                    bits[sb] = 0;
+                }
+                else
+                {
+                    bits[sb] = bitneed[sb] - bitslice;
+                    if(bits[sb] > 16)
+                    {
+                        bits[sb] = 16;
+                    }
+                }
+            }
+
+            for(sb = 0; bitcount < sbc->bitpool && sb < sbc->subbands; sb++)
+            {
+                if((bits[sb] >= 2) && (bits[sb] < 16))
+                {
+                    bits[sb]++;
+                    bitcount++;
+                }
+                else if((bitneed[sb] == bitslice+1) && (sbc->bitpool > bitcount + 1))
+                {
+                    bits[sb]  = 2;
+                    bitcount += 2;
+                }
+            }
+
+            for(sb = 0; bitcount < sbc->bitpool && sb < sbc->subbands; sb++)
+            {
+                if(bits[sb] < 16)
+                {
+                    bits[sb]++;
+                    bitcount++;
+                }
+            }
+        }
+    }
+    else if((sbc->channel_mode == SBC_CHANNEL_MODE_STEREO) || (sbc->channel_mode == SBC_CHANNEL_MODE_JOINT_STEREO))
+    {
+        max_bitneed = 0;
+        if(sbc->allocation_method == SBC_ALLOCATION_METHOD_SNR)
+        {
+            for(ch = 0; ch < 2; ch++)
+            {
+                sf      = sbc->scale_factor[ch];
+                bitneed = sbc->mem[ch];
+
+                for(sb = 0; sb < sbc->subbands; sb++)
+                {
+                    bitneed[sb] = sf[sb];
+
+                    if(bitneed[sb] > max_bitneed)
+                    {
+                        max_bitneed = bitneed[sb];
+                    }
+                }
+            }
+        }
+        else
+        {
+            uint8_t sri = sbc->sample_rate_index;
+
+            for(ch = 0; ch < 2; ch++)
+            {
+                sf      = sbc->scale_factor[ch];
+                bitneed = sbc->mem[ch];
+
+                for(sb = 0; sb < sbc->subbands; sb++)
+                {
+                    if(sf[sb] == 0)
+                    {
+                        bitneed[sb] = -5;
+                    }
+                    else
+                    {
+                        if(sbc->subbands == 4)
+                        {
+                            loudness = sf[sb] - SBC_COMMON_OFFSET4[sri][sb];
+                        }
+                        else
+                        {
+                            loudness = sf[sb] - SBC_COMMON_OFFSET8[sri][sb];
+                        }
+
+                        if(loudness > 0)
+                        {
+                            bitneed[sb] = loudness / 2;
+                        }
+                        else
+                        {
+                            bitneed[sb] = loudness;
+                        }
+                    }
+
+                    if(bitneed[sb] > max_bitneed)
+                    {
+                        max_bitneed = bitneed[sb];
+                    }
+                }
+            }
+        }
+
+        bitcount   = 0;
+        slicecount = 0;
+        bitslice   = max_bitneed + 1;
+
+        do
+        {
+            bitslice--;
+            bitcount += slicecount;
+            slicecount = 0;
+
+            for(ch = 0; ch < 2; ch++)
+            {
+                bitneed = sbc->mem[ch];
+
+                for(sb = 0; sb < sbc->subbands; sb++)
+                {
+                    if((bitneed[sb] > bitslice + 1) && (bitneed[sb] < bitslice + 16))
+                    {
+                        slicecount++;
+                    }
+                    else if(bitneed[sb] == bitslice + 1)
+                    {
+                        slicecount += 2;
+                    }
+                }
+            }
+        }while(bitcount + slicecount < sbc->bitpool);
+
+        if(bitcount + slicecount == sbc->bitpool)
+        {
+            bitcount += slicecount;
+            bitslice--;
+        }
+
+        for(ch = 0; ch < 2; ch++)
+        {
+            bits    = sbc->bits[ch];
+            bitneed = sbc->mem[ch];
+
+            for(sb = 0; sb < sbc->subbands; sb++)
+            {
+                if(bitneed[sb] < bitslice + 2)
+                {
+                    bits[sb] = 0;
+                }
+                else
+                {
+                    bits[sb] = bitneed[sb] - bitslice;
+                    if(bits[sb] > 16)
+                    {
+                        bits[sb] = 16;
+                    }
+                }
+            }
+        }
+
+        sb = 0;
+
+        while(bitcount < sbc->bitpool)
+        {
+            bits    = sbc->bits[0];
+            bitneed = sbc->mem[0];
+
+            if((bits[sb] >= 2) && (bits[sb] < 16))
+            {
+                bits[sb]++;
+                bitcount++;
+            }
+            else if((bitneed[sb] == bitslice + 1) && (sbc->bitpool > bitcount + 1))
+            {
+                bits[sb]  = 2;
+                bitcount += 2;
+            }
+
+            if(bitcount >= sbc->bitpool)
+            {
+                break;
+            }
+
+            bits    = sbc->bits[1];
+            bitneed = sbc->mem[1];
+
+            if((bits[sb] >= 2) && (bits[sb] < 16))
+            {
+                bits[sb]++;
+                bitcount++;
+            }
+            else if((bitneed[sb] == bitslice + 1) && (sbc->bitpool > bitcount + 1))
+            {
+                bits[sb]  = 2;
+                bitcount += 2;
+            }
+
+            if(++sb >= sbc->subbands)
+            {
+                break;
+            }
+        }
+
+        sb = 0;
+
+        while(bitcount < sbc->bitpool)
+        {
+            bits = sbc->bits[0];
+
+            if(bits[sb] < 16)
+            {
+                bits[sb]++;
+
+                if(++bitcount >= sbc->bitpool)
+                {
+                    break;
+                }                
+            }            
+
+            bits = sbc->bits[1];
+
+            if(bits[sb] < 16)
+            {
+                bits[sb]++;
+                bitcount++;
+            }
+
+            if(++sb >= sbc->subbands)
+            {
+                break;
+            }
+        }
+    }
 }
