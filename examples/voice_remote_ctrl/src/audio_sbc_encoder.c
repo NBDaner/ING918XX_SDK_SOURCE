@@ -376,7 +376,7 @@ static void sbc_encoder_subband_analyze_filter(sbc_encoder* sbc)
     }
 }
 
-int32_t sbc_encoder_init(sbc_encoder* sbc, int32_t sample_rate, int32_t num_channels)
+int32_t sbc_enc_init(sbc_encoder* sbc, int32_t sample_rate, int32_t num_channels)
 {
     sbc_framer* frame  = &sbc->frame;
     sbc_frame_header*   header = &sbc->header;
@@ -550,7 +550,7 @@ int32_t sbc_encoder_ctrl(sbc_encoder* sbc, uint32_t cmd, uint32_t arg)
     return SBC_ENC_ERR_NONE;
 }
 
-int32_t sbc_encoder_encode(sbc_encoder* sbc, const int16_t* pcm)
+int32_t sbc_encode(sbc_encoder* sbc, const int16_t* pcm)
 {
     int32_t  blk, ch, sb, bit;
     uint8_t* data = sbc->stream;
