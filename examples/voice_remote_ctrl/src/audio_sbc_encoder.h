@@ -21,12 +21,12 @@
 typedef enum _sbc_enc_err_code
 {
     SBC_ENC_ERRS = -6,
-    SBC_ENC_ERR_INVALID_SAMPLE_RATE,      /* invalid sample rate   */
-    SBC_ENC_ERR_INVALID_CHANNLES,         /* invalid channels      */
-    SBC_ENC_ERR_INVALID_CTRL_CMD,         /* invalid ctrl cmd      */
-    SBC_ENC_ERR_INVALID_CTRL_ARG,         /* invalid ctrl arg      */
-    SBC_ENC_ERR_BITPOOL_OUT_BOUNDS,       /* bitpool out of bounds */
-    SBC_ENCODER_ERR_OK,                   /* no error              */
+    SBC_ENC_ERR_INVALID_SAMPLE_RATE,      /**<invalid sample rate   */
+    SBC_ENC_ERR_INVALID_CHANNLES,         /**<invalid channels      */
+    SBC_ENC_ERR_INVALID_CTRL_CMD,         /**<invalid ctrl cmd      */
+    SBC_ENC_ERR_INVALID_CTRL_ARG,         /**<invalid ctrl arg      */
+    SBC_ENC_ERR_BITPOOL_OUT_BOUNDS,       /**<bitpool out of bounds */
+    SBC_ENC_ERR_NONE,                   /**<no error              */
 
 }sbc_enc_err_code;
 
@@ -35,20 +35,20 @@ typedef enum _sbc_enc_err_code
  */
 typedef enum _sbc_enc_ctrl_cmd
 {
-    SBC_ENCODER_CTRL_CMD_SET_ALLOCATION_METHOD,    /* arg: 0:loundness, 1:SNR                       */
-    SBC_ENCODER_CTRL_CMD_SET_BITPOOL,              /* arg: 2-250                                    */
-    SBC_ENCODER_CTRL_CMD_SET_BLOCK_MODE,           /* arg: 0:4, 1:8, 2:12, 3:16                     */
-    SBC_ENCODER_CTRL_CMD_SET_CHANNEL_MODE,         /* arg: 0:MONO, 1:DUAL, 2:STEREO, 3:JOINT STEREO */
-    SBC_ENCODER_CTRL_CMD_SET_SAMPLE_RATE_INDEX,    /* arg: 0:16000, 1:32000, 2:44100, 3:48000       */
-    SBC_ENCODER_CTRL_CMD_SET_SUBBAND_MODE,         /* arg: 0:4, 1:8                                 */
-    SBC_ENCODER_CTRL_CMD_SET_MSBC_ENCODE_MODE,     /* arg: NULL                                     */
+    SBC_ENCODER_CTRL_CMD_SET_ALLOCATION_METHOD,    /**<arg: 0:loundness, 1:SNR                       */
+    SBC_ENCODER_CTRL_CMD_SET_BITPOOL,              /**<arg: 2-250                                    */
+    SBC_ENCODER_CTRL_CMD_SET_BLOCK_MODE,           /**<arg: 0:4, 1:8, 2:12, 3:16                     */
+    SBC_ENCODER_CTRL_CMD_SET_CHANNEL_MODE,         /**<arg: 0:MONO, 1:DUAL, 2:STEREO, 3:JOINT STEREO */
+    SBC_ENCODER_CTRL_CMD_SET_SAMPLE_RATE_INDEX,    /**<arg: 0:16000, 1:32000, 2:44100, 3:48000       */
+    SBC_ENCODER_CTRL_CMD_SET_SUBBAND_MODE,         /**<arg: 0:4, 1:8                                 */
+    SBC_ENCODER_CTRL_CMD_SET_MSBC_ENCODE_MODE,     /**<arg: NULL                                     */
 
-    SBC_ENCODER_CTRL_CMD_GET_ALLOCATION_METHOD,    /* get allcation method                          */
-    SBC_ENCODER_CTRL_CMD_GET_BITPOOL,              /* get bitpool value                             */
-    SBC_ENCODER_CTRL_CMD_GET_BLOCK_MODE,           /* get block mode                                */
-    SBC_ENCODER_CTRL_CMD_GET_CHANNEL_MODE,         /* get channel mode                              */
-    SBC_ENCODER_CTRL_CMD_GET_SAMPLE_RATE_INDEX,    /* get sample rate index                         */
-    SBC_ENCODER_CTRL_CMD_GET_SUBBAND_MODE,         /* get sunband mode                              */
+    SBC_ENCODER_CTRL_CMD_GET_ALLOCATION_METHOD,    /**<get allcation method                          */
+    SBC_ENCODER_CTRL_CMD_GET_BITPOOL,              /**<get bitpool value                             */
+    SBC_ENCODER_CTRL_CMD_GET_BLOCK_MODE,           /**<get block mode                                */
+    SBC_ENCODER_CTRL_CMD_GET_CHANNEL_MODE,         /**<get channel mode                              */
+    SBC_ENCODER_CTRL_CMD_GET_SAMPLE_RATE_INDEX,    /**<get sample rate index                         */
+    SBC_ENCODER_CTRL_CMD_GET_SUBBAND_MODE,         /**<get sunband mode                              */
 
 }sbc_enc_ctrl_cmd;
 
@@ -61,16 +61,16 @@ typedef struct _sbc_encoder
     sbc_framer frame;
     sbc_frame_header   header;
 
-    int8_t   num_channels;              /* channels number    */
-    uint8_t  pcm_length;                /* PCM length         */
-    uint16_t sample_rate;               /* sample rate        */
+    int8_t   num_channels;              /**<channels number    */
+    uint8_t  pcm_length;                /**<PCM length         */
+    uint16_t sample_rate;               /**<sample rate        */
 
-    int32_t  sb_sample_f[2][16][8];     /* subband sample     */
+    int32_t  sb_sample_f[2][16][8];     /**<subband sample     */
 
     uint8_t  reserved;
     uint8_t  frame_index;
     uint8_t  frame_id[2];
-    uint8_t  stream[512];               /* encoded buffer     */
+    uint8_t  stream[512];               /**<encoded buffer     */
 
     int32_t  position[2];
     int32_t  xfifo[2][160];
@@ -83,7 +83,7 @@ typedef struct _sbc_encoder
  * @param  num_channels number of channels
  * @return error code, @see sbc_enc_err_code
  */
-int32_t sbc_encoder_init(sbc_encoder* sbc, int32_t sample_rate, int32_t num_channels);
+int32_t sbc_enc_init(sbc_encoder* sbc, int32_t sample_rate, int32_t num_channels);
                     
 /**
  * @brief  SBC encoder parameters config

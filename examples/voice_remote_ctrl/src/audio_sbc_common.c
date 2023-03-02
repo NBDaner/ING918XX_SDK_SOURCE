@@ -14,6 +14,28 @@
  */
 #include "audio_sbc_common.h"
 
+/**
+ * SBC constant table OFFSET4 for calculate bit allocation
+ */
+static const int8_t _sbc_common_offset4[4][4] =
+{
+    { -1, 0, 0, 0 },
+    { -2, 0, 0, 1 },
+    { -2, 0, 0, 1 },
+    { -2, 0, 0, 1 }
+};
+
+/**
+ * SBC constant table OFFSET8 for calculate bit allocation
+ */
+static const int8_t _sbc_common_offset8[4][8] =
+{
+    { -2, 0, 0, 0, 0, 0, 0, 1 },
+    { -3, 0, 0, 0, 0, 0, 1, 2 },
+    { -4, 0, 0, 0, 0, 0, 1, 2 },
+    { -4, 0, 0, 0, 0, 0, 1, 2 }
+};
+
 /*
  * Calculates the CRC-8 of the first len bits in data
  */
@@ -52,7 +74,17 @@ static const uint8_t sbc_crc_table[256] = {
 	0x97, 0x8A, 0xAD, 0xB0, 0xE3, 0xFE, 0xD9, 0xC4
 };
 
-static uint8_t sbc_crc8(const uint8_t *data, uint32_t len)
+static const uint16_t _sbc_sample_rates[] =
+{
+    16000, 32000, 44100, 48000
+};
+
+uint16_t sbc_common_sample_rate_get(uint32_t idx)
+{
+    return _sbc_sample_rates[idx];
+}
+
+static uint8_t sbc_common_crc8(const uint8_t *data, uint32_t len)
 {
 	uint8_t crc = 0x0f;
 	int i;
@@ -76,7 +108,7 @@ static uint8_t sbc_crc8(const uint8_t *data, uint32_t len)
 	return crc;
 }
 
-void sbc_bit_allocation(const struct sbc_frame_t *sbc)
+void sbc_common_bit_allocation(sbc_framer *sbc)
 {
     int32_t  ch;
     int32_t  sb;
@@ -96,7 +128,7 @@ void sbc_bit_allocation(const struct sbc_frame_t *sbc)
         {
             sf      = sbc->scale_factor[ch];
             bits    = sbc->bits[ch];
-            bitneed = sbc->mem[ch];
+            bitneed = sbc->fifo[ch];
 
             max_bitneed = 0;
     
@@ -125,11 +157,11 @@ void sbc_bit_allocation(const struct sbc_frame_t *sbc)
                     {
                         if(sbc->subbands == 4)
                         {
-                            loudness = sf[sb] - SBC_COMMON_OFFSET4[sri][sb];
+                            loudness = sf[sb] - _sbc_common_offset4[sri][sb];
                         }
                         else
                         {
-                            loudness = sf[sb] - SBC_COMMON_OFFSET8[sri][sb];
+                            loudness = sf[sb] - _sbc_common_offset8[sri][sb];
                         }
 
                         if(loudness > 0)
@@ -226,7 +258,7 @@ void sbc_bit_allocation(const struct sbc_frame_t *sbc)
             for(ch = 0; ch < 2; ch++)
             {
                 sf      = sbc->scale_factor[ch];
-                bitneed = sbc->mem[ch];
+                bitneed = sbc->fifo[ch];
 
                 for(sb = 0; sb < sbc->subbands; sb++)
                 {
@@ -246,7 +278,7 @@ void sbc_bit_allocation(const struct sbc_frame_t *sbc)
             for(ch = 0; ch < 2; ch++)
             {
                 sf      = sbc->scale_factor[ch];
-                bitneed = sbc->mem[ch];
+                bitneed = sbc->fifo[ch];
 
                 for(sb = 0; sb < sbc->subbands; sb++)
                 {
@@ -258,11 +290,11 @@ void sbc_bit_allocation(const struct sbc_frame_t *sbc)
                     {
                         if(sbc->subbands == 4)
                         {
-                            loudness = sf[sb] - SBC_COMMON_OFFSET4[sri][sb];
+                            loudness = sf[sb] - _sbc_common_offset4[sri][sb];
                         }
                         else
                         {
-                            loudness = sf[sb] - SBC_COMMON_OFFSET8[sri][sb];
+                            loudness = sf[sb] - _sbc_common_offset8[sri][sb];
                         }
 
                         if(loudness > 0)
@@ -295,7 +327,7 @@ void sbc_bit_allocation(const struct sbc_frame_t *sbc)
 
             for(ch = 0; ch < 2; ch++)
             {
-                bitneed = sbc->mem[ch];
+                bitneed = sbc->fifo[ch];
 
                 for(sb = 0; sb < sbc->subbands; sb++)
                 {
@@ -320,7 +352,7 @@ void sbc_bit_allocation(const struct sbc_frame_t *sbc)
         for(ch = 0; ch < 2; ch++)
         {
             bits    = sbc->bits[ch];
-            bitneed = sbc->mem[ch];
+            bitneed = sbc->fifo[ch];
 
             for(sb = 0; sb < sbc->subbands; sb++)
             {
@@ -344,7 +376,7 @@ void sbc_bit_allocation(const struct sbc_frame_t *sbc)
         while(bitcount < sbc->bitpool)
         {
             bits    = sbc->bits[0];
-            bitneed = sbc->mem[0];
+            bitneed = sbc->fifo[0];
 
             if((bits[sb] >= 2) && (bits[sb] < 16))
             {
@@ -363,7 +395,7 @@ void sbc_bit_allocation(const struct sbc_frame_t *sbc)
             }
 
             bits    = sbc->bits[1];
-            bitneed = sbc->mem[1];
+            bitneed = sbc->fifo[1];
 
             if((bits[sb] >= 2) && (bits[sb] < 16))
             {

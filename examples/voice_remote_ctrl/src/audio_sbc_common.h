@@ -21,41 +21,41 @@ extern "C" {
 
 #include <stdint.h>
 
-#define SBC_SYNCWORD                    0x9C        /* SBC synchronize word             */
-#define MSBC_SYNCWORD                   0xAD        /* MSBC synchronize word            */
-#define SBC_SAMPLE_RATE_16000           0x0         /* SBC sampling frequency : 16.0KHz */
-#define SBC_SAMPLE_RATE_32000           0x1         /* SBC sampling frequency : 32.0KHz */
-#define SBC_SAMPLE_RATE_44100           0x2         /* SBC sampling frequency : 44.1KHz */
-#define SBC_SAMPLE_RATE_48000           0x3         /* SBC sampling frequency : 48.0KHz */
-#define SBC_BLOCKS_4                    0x0         /* SBC blocks number 4              */
-#define SBC_BLOCKS_8                    0x1         /* SBC blocks number 8              */
-#define SBC_BLOCKS_12                   0x2         /* SBC blocks number 12             */
-#define SBC_BLOCKS_16                   0x3         /* SBC blocks number 16             */
-#define SBC_CHANNEL_MODE_MONO           0x0         /* SBC channel mode : MONO          */
-#define SBC_CHANNEL_MODE_DUAL_CHANNEL   0x1         /* SBC channel mode : Dual Channels */
-#define SBC_CHANNEL_MODE_STEREO         0x2         /* SBC channel mode : Stereo        */
-#define SBC_CHANNEL_MODE_JOINT_STEREO   0x3         /* SBC channel mode : Joint Stereo  */
-#define SBC_ALLOCATION_METHOD_LOUDNESS  0x0         /* SBC allocation method : Loudness */
-#define SBC_ALLOCATION_METHOD_SNR       0x1         /* SBC allocation method : SNR      */
-#define SBC_SUBBANDS_4                  0x0         /* SBC subbands number 4            */
-#define SBC_SUBBANDS_8                  0x1         /* SBC subbands number 8            */
+#define SBC_SYNCWORD                    0x9C        /**< SBC synchronize word             */
+#define MSBC_SYNCWORD                   0xAD        /**< MSBC synchronize word            */
+#define SBC_SAMPLE_RATE_16000           0x0         /**< SBC sampling frequency : 16.0KHz */
+#define SBC_SAMPLE_RATE_32000           0x1         /**< SBC sampling frequency : 32.0KHz */
+#define SBC_SAMPLE_RATE_44100           0x2         /**<SBC sampling frequency : 44.1KHz */
+#define SBC_SAMPLE_RATE_48000           0x3         /**<SBC sampling frequency : 48.0KHz */
+#define SBC_BLOCKS_4                    0x0         /**<SBC blocks number 4              */
+#define SBC_BLOCKS_8                    0x1         /**<SBC blocks number 8              */
+#define SBC_BLOCKS_12                   0x2         /**<SBC blocks number 12             */
+#define SBC_BLOCKS_16                   0x3         /**<SBC blocks number 16             */
+#define SBC_CHANNEL_MODE_MONO           0x0         /**<SBC channel mode : MONO          */
+#define SBC_CHANNEL_MODE_DUAL_CHANNEL   0x1         /**<SBC channel mode : Dual Channels */
+#define SBC_CHANNEL_MODE_STEREO         0x2         /**<SBC channel mode : Stereo        */
+#define SBC_CHANNEL_MODE_JOINT_STEREO   0x3         /**<SBC channel mode : Joint Stereo  */
+#define SBC_ALLOCATION_METHOD_LOUDNESS  0x0         /**<SBC allocation method : Loudness */
+#define SBC_ALLOCATION_METHOD_SNR       0x1         /**<SBC allocation method : SNR      */
+#define SBC_SUBBANDS_4                  0x0         /**<SBC subbands number 4            */
+#define SBC_SUBBANDS_8                  0x1         /**<SBC subbands number 8            */
 
-#define SCALE_PROTO4_TBL                (15)        /* coefficient            */
-#define SCALE_ANA4_TBL                  (17)        /* anamatrix coefficient            */
-#define SCALE_PROTO8_TBL                (16)        /* coefficient            */
-#define SCALE_ANA8_TBL                  (17)        /* anamatrix coefficient            */
-#define SCALE_SPROTO4_TBL               (12)        /* coefficient            */
-#define SCALE_SPROTO8_TBL               (14)        /* coefficient            */
-#define SCALE_NPROTO4_TBL               (11)        /* coefficient            */
-#define SCALE_NPROTO8_TBL               (11)        /* coefficient            */
-#define SCALE4_STAGE1_BITS              (15)        /* coefficient            */
-#define SCALE4_STAGE2_BITS              (15)        /* coefficient            */
-#define SCALE8_STAGE1_BITS              (15)        /* coefficient            */
-#define SCALE8_STAGE2_BITS              (15)        /* coefficient            */
-#define SCALE4_STAGED1_BITS             (15)        /* coefficient            */
-#define SCALE4_STAGED2_BITS             (16)        /* coefficient            */
-#define SCALE8_STAGED1_BITS             (15)        /* coefficient            */
-#define SCALE8_STAGED2_BITS             (16)        /* coefficient            */
+#define SCALE_PROTO4_TBL                (15)        /**<coefficient            */
+#define SCALE_ANA4_TBL                  (17)        /**<anamatrix coefficient            */
+#define SCALE_PROTO8_TBL                (16)        /**<coefficient            */
+#define SCALE_ANA8_TBL                  (17)        /**<anamatrix coefficient            */
+#define SCALE_SPROTO4_TBL               (12)        /**<coefficient            */
+#define SCALE_SPROTO8_TBL               (14)        /**<coefficient            */
+#define SCALE_NPROTO4_TBL               (11)        /**<coefficient            */
+#define SCALE_NPROTO8_TBL               (11)        /**<coefficient            */
+#define SCALE4_STAGE1_BITS              (15)        /**<coefficient            */
+#define SCALE4_STAGE2_BITS              (15)        /**<coefficient            */
+#define SCALE8_STAGE1_BITS              (15)        /**<coefficient            */
+#define SCALE8_STAGE2_BITS              (15)        /**<coefficient            */
+#define SCALE4_STAGED1_BITS             (15)        /**<coefficient            */
+#define SCALE4_STAGED2_BITS             (16)        /**<coefficient            */
+#define SCALE8_STAGED1_BITS             (15)        /**<coefficient            */
+#define SCALE8_STAGED2_BITS             (16)        /**<coefficient            */
 
 #define ASR(val, bits)                  ((int32_t)(val)) >> (bits)
 #define SP4(val)                        ASR(val, SCALE_PROTO4_TBL)
@@ -98,7 +98,7 @@ typedef struct _sbc_framer
 
     int8_t   scale_factor[2][8];        /**< only the lower 4 bits of every element are to be used */
 
-    int32_t  mem[2][8];                 /**< Memory used as bit need and levels */
+    int32_t  fifo[2][8];                /**< stage buffer used separately as bit need and levels */
 }sbc_framer;
 
 /**
@@ -130,12 +130,26 @@ typedef struct _sbc_frame_header
 }sbc_frame_header;
 
 /**
+ * @brief  Get sample rate by index
+ * @param  idx sample rate index, 0:16000, 1:32000, 2:44100, 3:48000
+ * @return sample rate
+ */
+uint16_t sbc_common_sample_rate_get(uint32_t idx);
+
+/**
  * @brief  CRC8 calculation
  * @param  data  data buffer to do calculation
  * @param  len   data buffer length in bits
  * @return CRC8 value
  */
-uint8_t  sbc_crc8(const uint8_t* data, uint32_t len);
+uint8_t  sbc_common_crc8(const uint8_t* data, uint32_t len);
+
+/**
+ * @brief  SBC bit allocation calculate for both encoder and decoder
+ * @param  sbc SBC common context pointer
+ * @return NULL
+ */
+void sbc_common_bit_allocation(sbc_framer* sbc);
 
 #ifdef __cplusplus
 }

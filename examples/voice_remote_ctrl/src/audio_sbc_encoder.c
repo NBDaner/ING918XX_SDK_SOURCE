@@ -55,6 +55,13 @@ static const int32_t _sbc_enc_anamatrix_8[8] =
     SA8(0x238e7680), SA8(0x0c7c5c20), SA8(0x2d413cc0), SA8(0x40000000)
 };
 
+static inline uint32_t sbc_abs(int32_t x)
+{
+    int32_t y = x - (x < 0);
+
+    return (uint32_t)(y ^= (y >> 31));
+}
+
 static inline void _sbc_enc_analyze_four(const int32_t* in, int32_t* out)
 {
     int32_t t0, t1, t2, t3, t4, t5, t7;
@@ -118,7 +125,7 @@ static inline void _sbc_enc_analyze_four(const int32_t* in, int32_t* out)
     *out++ = SCALE4_STAGE2( s0 + s1 - s2 + s4);
 }
 
-static inline void sbc_enc_analyze_four(SbcEncoderContext* sbc)
+static inline void sbc_enc_analyze_four(sbc_encoder* sbc)
 {
     int32_t ch, blk;
 
@@ -319,7 +326,7 @@ static inline void _sbc_enc_analyze_eight(const int32_t *in, int32_t *out)
     *out++ = SCALE8_STAGE2(res);
 }
 
-static inline void sbc_encoder_analyze_eight(SbcEncoderContext* sbc)
+static inline void sbc_enc_analyze_eight(sbc_encoder* sbc)
 {
     int32_t ch, blk;
 
@@ -340,7 +347,7 @@ static inline void sbc_encoder_analyze_eight(SbcEncoderContext* sbc)
             x[86] = x[6] = pcm[1];
             x[87] = x[7] = pcm[0];
 
-            _sbc_encoder_analyze_eight(x, pcm);
+            _sbc_enc_analyze_eight(x, pcm);
 
             sbc->position[ch] -= 8;
 
@@ -352,16 +359,16 @@ static inline void sbc_encoder_analyze_eight(SbcEncoderContext* sbc)
     }
 }
 
-static void sbc_encoder_subband_analyze_filter(SbcEncoderContext* sbc)
+static void sbc_encoder_subband_analyze_filter(sbc_encoder* sbc)
 {
     switch(sbc->frame.subbands)
     {
     case 4:
-        sbc_encoder_analyze_four(sbc);
+        sbc_enc_analyze_four(sbc);
         break;
 
     case 8:
-        sbc_encoder_analyze_eight(sbc);
+        sbc_enc_analyze_eight(sbc);
         break;
 
     default:
@@ -369,12 +376,12 @@ static void sbc_encoder_subband_analyze_filter(SbcEncoderContext* sbc)
     }
 }
 
-int32_t sbc_encoder_init(SbcEncoderContext* sbc, int32_t sample_rate, int32_t num_channels)
+int32_t sbc_encoder_init(sbc_encoder* sbc, int32_t sample_rate, int32_t num_channels)
 {
-    SbcCommonContext* frame  = &sbc->frame;
-    SbcFrameHeader*   header = &sbc->header;
+    sbc_framer* frame  = &sbc->frame;
+    sbc_frame_header*   header = &sbc->header;
 
-    memset(sbc, 0, sizeof(SbcEncoderContext));
+    memset(sbc, 0, sizeof(sbc_encoder));
 
     //Check input arguments
     switch(sample_rate)
@@ -392,7 +399,7 @@ int32_t sbc_encoder_init(SbcEncoderContext* sbc, int32_t sample_rate, int32_t nu
         frame->sample_rate_index = 3;
         break;
     default:
-        return SBC_ENCODER_ERROR_INVALID_SAMPLE_RATE;
+        return SBC_ENC_ERR_INVALID_SAMPLE_RATE;
     }
 
     switch(num_channels)
@@ -404,7 +411,7 @@ int32_t sbc_encoder_init(SbcEncoderContext* sbc, int32_t sample_rate, int32_t nu
         frame->channel_mode = 2;
         break;
     default:
-        return SBC_ENCODER_ERROR_INVALID_CHANNLES;
+        return SBC_ENC_ERR_INVALID_CHANNLES;
     }
 
     frame->blocks             = 16;
@@ -429,5 +436,308 @@ int32_t sbc_encoder_init(SbcEncoderContext* sbc, int32_t sample_rate, int32_t nu
     sbc->frame_id[1]  = 0x08;
     sbc->frame_index  = 0x00;
 
-    return SBC_ENCODER_ERROR_OK;
+    return SBC_ENC_ERR_NONE;
+}
+
+int32_t sbc_encoder_ctrl(sbc_encoder* sbc, uint32_t cmd, uint32_t arg)
+{
+    switch(cmd)
+    {
+    case SBC_ENCODER_CTRL_CMD_SET_ALLOCATION_METHOD:
+        if(arg > 1)
+        {
+            return SBC_ENC_ERR_INVALID_CTRL_ARG;
+        }
+        sbc->frame.allocation_method  = arg;
+        sbc->header.allocation_method = arg;
+        break;
+    case SBC_ENCODER_CTRL_CMD_SET_BITPOOL:
+        if((sbc->frame.channel_mode == SBC_CHANNEL_MODE_MONO || sbc->frame.channel_mode == SBC_CHANNEL_MODE_DUAL_CHANNEL) && arg > (uint32_t)sbc->frame.subbands << 4)
+        {
+            return SBC_ENC_ERR_BITPOOL_OUT_BOUNDS;
+        }
+        if((sbc->frame.channel_mode == SBC_CHANNEL_MODE_STEREO || sbc->frame.channel_mode == SBC_CHANNEL_MODE_JOINT_STEREO) && arg > (uint32_t)sbc->frame.subbands << 5)
+        {
+            return SBC_ENC_ERR_BITPOOL_OUT_BOUNDS;
+        }
+        sbc->frame.bitpool  = arg;
+        sbc->header.bitpool = arg;
+        break;
+    case SBC_ENCODER_CTRL_CMD_SET_BLOCK_MODE:
+        if(arg > SBC_BLOCKS_16 && arg != 15)
+        {
+            return SBC_ENC_ERR_INVALID_CTRL_ARG;
+        }
+        if(arg == 15)
+        {
+            sbc->header.syncword   = MSBC_SYNCWORD;
+            sbc->header.block_mode = 3;
+            sbc->frame.blocks      = 15;
+        }
+        else
+        {
+            sbc->header.syncword   = SBC_SYNCWORD;
+            sbc->header.block_mode = arg;
+            sbc->frame.blocks      = (arg + 1) << 2;
+        }
+        sbc->pcm_length = sbc->frame.blocks * sbc->frame.subbands;
+        break;
+    case SBC_ENCODER_CTRL_CMD_SET_CHANNEL_MODE:
+        if(arg > 3)
+        {
+            return SBC_ENC_ERR_INVALID_CTRL_ARG;
+        }
+        sbc->frame.channel_mode  = arg;
+        sbc->header.channel_mode = arg;
+        sbc->num_channels        = arg == SBC_CHANNEL_MODE_MONO ? 1 : 2;
+        break;
+    case SBC_ENCODER_CTRL_CMD_SET_SAMPLE_RATE_INDEX:
+        if(arg > 3)
+        {
+            return SBC_ENC_ERR_INVALID_CTRL_ARG;
+        }
+        sbc->frame.sample_rate_index  = arg;
+        sbc->header.sample_rate_index = arg;
+        sbc->sample_rate              = sbc_common_sample_rate_get(arg);
+        break;
+    case SBC_ENCODER_CTRL_CMD_SET_SUBBAND_MODE:
+        if(arg > 1)
+        {
+            return SBC_ENC_ERR_INVALID_CTRL_ARG;
+        }
+        sbc->frame.subbands      = (arg + 1) << 2;
+        sbc->header.subband_mode = arg;
+        sbc->pcm_length          = sbc->frame.blocks * sbc->frame.subbands;
+        break;
+    case SBC_ENCODER_CTRL_CMD_SET_MSBC_ENCODE_MODE:
+        sbc->sample_rate             = 16000;
+        sbc->num_channels            = 1;
+        sbc->pcm_length              = 120;
+        sbc->frame.blocks            = 15;
+        sbc->frame.allocation_method = SBC_ALLOCATION_METHOD_LOUDNESS;
+        sbc->frame.subbands          = 8;
+        sbc->frame.bitpool           = 26;
+        sbc->header.syncword         = MSBC_SYNCWORD;
+        sbc->header.sample_rate_index= 0;
+        sbc->header.block_mode       = 0;//SBC_BLOCKS_16;
+        sbc->header.channel_mode     = 0;//SBC_CHANNEL_MODE_MONO;
+        sbc->header.allocation_method= 0;//SBC_ALLOCATION_METHOD_LOUDNESS;
+        sbc->header.subband_mode     = 0;//SBC_SUBBANDS_8;
+        sbc->header.bitpool          = 0;//26;
+        break;
+    case SBC_ENCODER_CTRL_CMD_GET_ALLOCATION_METHOD:
+        *(uint32_t*)arg = sbc->header.allocation_method;
+        break;
+    case SBC_ENCODER_CTRL_CMD_GET_BITPOOL:
+        *(uint32_t*)arg = sbc->header.bitpool;
+        break;
+    case SBC_ENCODER_CTRL_CMD_GET_BLOCK_MODE:
+        *(uint32_t*)arg = sbc->header.block_mode;
+        break;
+    case SBC_ENCODER_CTRL_CMD_GET_CHANNEL_MODE:
+        *(uint32_t*)arg = sbc->header.channel_mode;
+        break;
+    case SBC_ENCODER_CTRL_CMD_GET_SAMPLE_RATE_INDEX:
+        *(uint32_t*)arg = sbc->header.sample_rate_index;
+        break;
+    case SBC_ENCODER_CTRL_CMD_GET_SUBBAND_MODE:
+        *(uint32_t*)arg = sbc->header.subband_mode;
+        break;
+    default:
+        return SBC_ENC_ERR_INVALID_CTRL_CMD;
+    }
+
+    return SBC_ENC_ERR_NONE;
+}
+
+int32_t sbc_encoder_encode(sbc_encoder* sbc, const int16_t* pcm)
+{
+    int32_t  blk, ch, sb, bit;
+    uint8_t* data = sbc->stream;
+    int8_t*  bits;
+    int32_t* levels;
+
+    int32_t  produced;
+    int32_t  crc_bits;
+
+    sbc_framer* frame = &sbc->frame;
+
+    sbc->frame_id[0]  = 0x01;
+    sbc->frame_id[1]  = _sbc_enc_frame_id[sbc->frame_index++];
+    sbc->frame_index &= 0x03;
+
+    for(ch = 0; ch < sbc->num_channels; ch++)
+    {
+        int16_t* ch_pcm = (int16_t*)pcm + ch;
+        int32_t  step   = sbc->num_channels;
+
+        for(blk = 0; blk < frame->blocks; blk++)
+        {
+            int32_t* sb_sample = (int32_t*)sbc->sb_sample_f[ch][blk];
+
+            for(sb = 0; sb < frame->subbands; sb++)
+            {
+                *sb_sample++ = *ch_pcm;
+                ch_pcm += step;
+            }
+        }
+    }
+
+    sbc_encoder_subband_analyze_filter(sbc);
+
+    *((uint32_t*)data) = *((uint32_t*)&sbc->header);
+
+    produced = 32;
+    crc_bits = 16;
+
+    for(ch = 0; ch < sbc->num_channels; ch++)
+    {
+        uint8_t* sf = (uint8_t*)frame->scale_factor[ch];
+
+        for(sb = 0; sb < frame->subbands; sb++)
+        {
+            uint32_t sf2 = 2;
+
+            sf[sb] = 0;
+
+            for(blk = 0; blk < frame->blocks; blk++)
+            {
+                while(sf2 < sbc_abs(sbc->sb_sample_f[ch][blk][sb]))
+                {
+                    sf[sb]++;
+                    sf2 *= 2;
+                }
+            }
+        }
+    }
+
+    if(frame->channel_mode == SBC_CHANNEL_MODE_JOINT_STEREO)
+    {
+        /* scalefactor and scale_factor in joint case */
+        uint8_t  sfj[2];
+        uint32_t sfj2[2];
+
+        /* like frame->sb_sample but joint stereo */
+        int32_t sb_sample_j[16][2];
+
+        frame->join = 0;
+
+        for(sb = 0; sb < frame->subbands - 1; sb++)
+        {
+            sfj[0]  = sfj[1]  = 0;
+            sfj2[0] = sfj2[1] = 2;
+
+            for(blk = 0; blk < frame->blocks; blk++)
+            {
+                /* calculate joint stereo signal */
+                sb_sample_j[blk][0] = (sbc->sb_sample_f[0][blk][sb] + sbc->sb_sample_f[1][blk][sb]) >> 1;
+                sb_sample_j[blk][1] = (sbc->sb_sample_f[0][blk][sb] - sbc->sb_sample_f[1][blk][sb]) >> 1;
+
+                /* calculate scale_factor_j and scalefactor_j for joint case */
+                while(sfj2[0] < sbc_abs(sb_sample_j[blk][0]))
+                {
+                    sfj[0]++;
+                    sfj2[0] *= 2;
+                }
+
+                while(sfj2[1] < sbc_abs(sb_sample_j[blk][1]))
+                {
+                    sfj[1]++;
+                    sfj2[1] *= 2;
+                }
+            }
+
+            /* decide whether to join this subband */
+            if((uint32_t)(1 << frame->scale_factor[0][sb]) + (1 << frame->scale_factor[1][sb]) > (sfj2[0] + sfj2[1]) / 2)
+            {
+                /* use joint stereo for this subband */
+                frame->join |= 1 << sb;
+                frame->scale_factor[0][sb] = sfj[0];
+                frame->scale_factor[1][sb] = sfj[1];
+
+                for(blk = 0; blk < frame->blocks; blk++)
+                {
+                    sbc->sb_sample_f[0][blk][sb] = sb_sample_j[blk][0];
+                    sbc->sb_sample_f[1][blk][sb] = sb_sample_j[blk][1];
+                }
+            }
+        }
+
+        data[4] = 0;
+        for(sb = 0; sb < frame->subbands - 1; sb++)
+        {
+            data[4] |= ((frame->join >> sb) & 0x01) << (frame->subbands - 1 - sb);
+        }
+
+        produced += frame->subbands;
+        crc_bits += frame->subbands;
+    }
+
+    for(ch = 0; ch < sbc->num_channels; ch++)
+    {
+        for(sb = 0; sb < frame->subbands; sb++)
+        {
+            data[produced >> 3] <<= 4;
+            data[produced >> 3]  |= frame->scale_factor[ch][sb] & 0x0F;
+
+            produced += 4;
+            crc_bits += 4;
+        }
+    }
+
+    sbc_common_bit_allocation(frame);
+
+    for(ch = 0; ch < sbc->num_channels; ch++)
+    {
+        bits   = frame->bits[ch];
+        levels = frame->fifo[ch];
+
+        for(sb = 0; sb < frame->subbands; sb++)
+        {
+            levels[sb] = (1 << bits[sb]) - 1;
+        }
+    }
+
+    for(blk = 0; blk < frame->blocks; blk++)
+    {
+        for(ch = 0; ch < sbc->num_channels; ch++)
+        {
+            bits   = frame->bits[ch];
+            levels = frame->fifo[ch];
+
+            for(sb = 0; sb < frame->subbands; sb++)
+            {
+                if(levels[sb] > 0)
+                {
+                    uint16_t audio_sample;
+
+                    audio_sample   = (uint16_t)((((sbc->sb_sample_f[ch][blk][sb] * levels[sb] + (1 << frame->scale_factor[ch][sb])) >> (frame->scale_factor[ch][sb] + 1)) + levels[sb]) >> 1);
+                    audio_sample <<= 16 - bits[sb];
+
+                    for(bit = 0; bit < bits[sb]; bit++)
+                    {
+                        data[produced >> 3] <<= 1;
+
+                        if(audio_sample & 0x8000)
+                        {
+                            data[produced >> 3] |= 0x1;
+                        }
+
+                        audio_sample <<= 1;
+                        produced++;
+                    }
+                }
+            }
+        }
+    }
+
+    data[3] = sbc_common_crc8(data + 1, crc_bits);
+
+    /* align the last byte */
+    if(produced & 7)
+    {
+        data[produced >> 3] <<= 8 - (produced & 7);
+    }
+
+    return (produced + 7) >> 3;
 }
