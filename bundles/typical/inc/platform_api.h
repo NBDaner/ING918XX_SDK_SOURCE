@@ -113,6 +113,10 @@ typedef enum
     PLATFORM_CB_EVT_LLE_INIT,
 
     // when allocation on heap fails (heap out of memory)
+    // NOTE: param (void *data) is cased from an integer identifying which heap is OOM:
+    //      * 0: FreeRTOS's heap;
+    //      * 1: Link Layer's heap;
+    //      * 2: Link Layer's task pool.
     // if this callback is not defined, CPU enters a dead loop
     PLATFORM_CB_EVT_HEAP_OOM,
 
@@ -425,7 +429,7 @@ typedef enum
                                             // For ING916: values may vary in 0x16~0x2d, etc.
     PLATFORM_CFG_ALWAYS_CALL_WAKEUP,        // always trigger `PLATFORM_CB_EVT_ON_DEEP_SLEEP_WAKEUP` no matter if deep sleep
                                             // procedure is completed or aborted (failed).
-                                            // Default for ING918: Disabled(0) for backward compatability
+                                            // Default for ING918: Disabled(0) for backward compatibility
                                             // Default for ING916: Enabled(1)
     PLATFORM_CFG_PS_DBG_3,
 } platform_cfg_item_t;
@@ -679,7 +683,7 @@ void platform_set_timer(void (* callback)(void), uint32_t delay);
  * For NoOS variants, RTOS stacks can be replaced (modify its size, etc) when implementing
  * the generic OS interface.
  *
- * @param[in]   id              task identifier ({PLATFORM_TASK_CONTROLLER, PLATFORM_TASK_HOST})
+ * @param[in]   id              task identifier
  * @param[in]   start           start address of the new stack
  * @param[in]   size            size of the new stack in bytes
  ****************************************************************************************
