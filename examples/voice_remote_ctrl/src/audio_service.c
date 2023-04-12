@@ -18,6 +18,8 @@ static adpcm_enc_t enc;
 static sbc_encoder sbc;
 audio_enc_t audio_t;
 
+int16_t audiodata[256] = {1};
+
 //adpcm缓存参数结构体定义
 static adpcm_priv_t adpcm_priv=
 {
@@ -232,7 +234,8 @@ static void audio_sbc_task(void *pdata)
                 sample = fir_push_run(&fir, sample);
 #endif
         }
-
+        sbc_encode(&sbc, audiodata);
+        printf("finished.\n");
         // encodelen = sbc_encode(&sbc, inp, codesize, outp, framelen, &encoded);
         // if(encodelen == codesize) 
         // {
@@ -240,7 +243,6 @@ static void audio_sbc_task(void *pdata)
         //         enc_output_cb((uint8_t)(*(outp + i)), 0); 
         //     } 
         // }
- 
     }
 }
 
@@ -301,6 +303,8 @@ void audio_init(void)
 
     audio_input_setup();
     platform_printf("初始化配置...OK\r\n");
+
+    audio_input_start();
 }
 
 static void enc_state_init(audio_enc_t *audio)
@@ -319,7 +323,7 @@ static void enc_state_init(audio_enc_t *audio)
                                     audio->voice_buf_block_size, audio->sample_buf_num, audio->sample_buf_size);
 #elif (AUDIO_ENCODER_SELECTION == AUDIO_ENCODER_SBC)
     platform_printf("[编码器选择-->SBC]\r\n");
-    sbc_enc_init(&sbc, 16000L, 0L);
+    sbc_enc_init(&sbc, 16000, 1);
     sbc_priv.voice_buf_block_size = sbc_enc_get_frame_length(&sbc);
     sbc_priv.voice_buf_block_num = 4100 / sbc_priv.voice_buf_block_size;
     sbc_priv.sample_buf_size = sbc_enc_get_codesize(&sbc);

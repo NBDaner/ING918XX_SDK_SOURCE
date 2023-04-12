@@ -116,7 +116,7 @@ int32_t sbc_encoder_ctrl(sbc_encoder* sbc, uint32_t cmd, uint32_t arg);
 int32_t sbc_encode(sbc_encoder* sbc, const int16_t* pcm);
 
 /**
- * @brief 
+ * @brief Get the input data length of the SBC encoder
  * 
  * @param sbc 
  * @return int32_t 
@@ -124,7 +124,7 @@ int32_t sbc_encode(sbc_encoder* sbc, const int16_t* pcm);
 uint32_t sbc_enc_get_codesize(sbc_encoder* sbc);
 
 /**
- * @brief 
+ * @brief  Get the output data length of the SBC encoder
  * 
  * @param sbc 
  * @return int32_t 
