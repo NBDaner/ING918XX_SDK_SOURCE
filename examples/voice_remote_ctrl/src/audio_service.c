@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include "audio_service.h"
 #include "audio_adpcm.h"
 #include "audio_sbc.h"
@@ -47,7 +48,7 @@ uint16_t byte_index;
 uint16_t seq_cnt;
 int8_t mic_dig_gain = 0;
 
-#define SAMPLE_BUF_LEN  50
+#define SAMPLE_BUF_LEN  256
 #define SAMPLE_BUF_CNT  4
 
 int sample_buf_index = 0;
@@ -234,8 +235,7 @@ static void audio_sbc_task(void *pdata)
                 sample = fir_push_run(&fir, sample);
 #endif
         }
-        sbc_encode(&sbc, audiodata);
-        printf("finished.\n");
+        printf("finished(%d).\n",sbc_encode(&sbc, audiodata));
         // encodelen = sbc_encode(&sbc, inp, codesize, outp, framelen, &encoded);
         // if(encodelen == codesize) 
         // {
@@ -267,7 +267,7 @@ void audio_rx_sample(pcm_sample_t sample)
 
     sample_buf[sample_buf_index][sample_index] = sample;
     sample_index++;
-    if (sample_index >= SAMPLE_BUF_LEN)
+    if (sample_index >= SAMPLE_BUF_LEN) 
     {
         xQueueSendFromISR(xSampleQueue, &sample_buf_index, &xHigherPriorityTaskWoke);
         sample_buf_index++;
