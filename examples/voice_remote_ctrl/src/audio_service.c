@@ -15,7 +15,7 @@ extern void audio_input_start(void);
 extern void audio_input_stop(void);
 
 static adpcm_enc_t enc;
-static sbc_t sbc;
+static sbc_encoder sbc;
 audio_enc_t audio_t;
 
 //adpcm缓存参数结构体定义
@@ -191,15 +191,15 @@ static void audio_sbc_task(void *pdata)
     int size, codesize, framelen, encodelen,encoded;
 
     //获取编码一个frame所需的原始数据量
-    codesize = sbc_get_codesize(&sbc);
+    codesize = sbc_enc_get_codesize(&sbc);
     platform_printf("codesize = %d\r\n", codesize); 
 
     //一帧编码后的数据长度
-    framelen = sbc_get_frame_length(&sbc);
+    framelen = sbc_enc_get_frame_length(&sbc);
     platform_printf("framelen = %d\r\n",framelen); 
 
-    sbc_sample_t *inp, *outp;
-    outp = malloc(framelen * sizeof(sbc_sample_t));
+    sample_t *inp, *outp;
+    outp = malloc(framelen * sizeof(sample_t));
 
 #if (OVER_SAMPLING_MASK != 0)
     int oversample_cnt = 0;
@@ -216,11 +216,11 @@ static void audio_sbc_task(void *pdata)
         if (xQueueIsQueueFullFromISR(xSampleQueue) != pdFALSE)
             platform_printf("Full\r\n");
         
-        inp = (sbc_sample_t *)(sample_buf[index]);    //获取单行数首地址        
+        inp = (sample_t *)(sample_buf[index]);    //获取单行数首地址        
         
         for (i = 0; i < audio_t.sample_buf_size; i++)
         {
-            sbc_sample_t sample = inp[i];
+            sample_t sample = inp[i];
 #if (OVER_SAMPLING_MASK != 0)
             oversample_cnt = (oversample_cnt + 1) & OVER_SAMPLING_MASK;
             if (oversample_cnt != 0)
@@ -232,13 +232,14 @@ static void audio_sbc_task(void *pdata)
                 sample = fir_push_run(&fir, sample);
 #endif
         }
-        encodelen = sbc_encode(&sbc, inp, codesize, outp, framelen, &encoded);
-        if(encodelen == codesize) 
-        {
-            for (int i=0; i<framelen; i++) {
-                enc_output_cb((uint8_t)(*(outp + i)), 0); 
-            } 
-        }
+
+        // encodelen = sbc_encode(&sbc, inp, codesize, outp, framelen, &encoded);
+        // if(encodelen == codesize) 
+        // {
+        //     for (int i=0; i<framelen; i++) {
+        //         enc_output_cb((uint8_t)(*(outp + i)), 0); 
+        //     } 
+        // }
  
     }
 }
@@ -318,10 +319,10 @@ static void enc_state_init(audio_enc_t *audio)
                                     audio->voice_buf_block_size, audio->sample_buf_num, audio->sample_buf_size);
 #elif (AUDIO_ENCODER_SELECTION == AUDIO_ENCODER_SBC)
     platform_printf("[编码器选择-->SBC]\r\n");
-    sbc_init(&sbc, 0L);
-    sbc_priv.voice_buf_block_size = sbc_get_frame_length(&sbc);
+    sbc_enc_init(&sbc, 16000L, 0L);
+    sbc_priv.voice_buf_block_size = sbc_enc_get_frame_length(&sbc);
     sbc_priv.voice_buf_block_num = 4100 / sbc_priv.voice_buf_block_size;
-    sbc_priv.sample_buf_size = sbc_get_codesize(&sbc);
+    sbc_priv.sample_buf_size = sbc_enc_get_codesize(&sbc);
     platform_printf("编码器参数表如下：\r\n");
     audio->voice_buf_block_num = sbc_priv.voice_buf_block_num;
     audio->voice_buf_block_size = sbc_priv.voice_buf_block_size;

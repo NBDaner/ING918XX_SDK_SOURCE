@@ -82,7 +82,7 @@ extern "C" {
 /**
  * @brief SBC frame encoder structure
  */
-typedef struct _sbc_framer
+typedef struct _sbc_frame_info
 {
     int8_t   blocks;                    /**< block number       */
     int8_t   subbands;                  /**< subbands number    */
@@ -99,7 +99,7 @@ typedef struct _sbc_framer
     int8_t   scale_factor[2][8];        /**< only the lower 4 bits of every element are to be used */
 
     int32_t  fifo[2][8];                /**< stage buffer used separately as bit need and levels */
-}sbc_framer;
+}sbc_frame_info;
 
 /**
  * @brief SBC frame header structure
@@ -149,7 +149,7 @@ uint8_t  sbc_common_crc8(const uint8_t* data, uint32_t len);
  * @param  sbc SBC common context pointer
  * @return NULL
  */
-void sbc_common_bit_allocation(sbc_framer* sbc);
+void sbc_common_bit_allocation(sbc_frame_info* sbc);
 
 #ifdef __cplusplus
 }

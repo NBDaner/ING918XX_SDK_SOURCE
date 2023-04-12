@@ -84,7 +84,7 @@ uint16_t sbc_common_sample_rate_get(uint32_t idx)
     return _sbc_sample_rates[idx];
 }
 
-static uint8_t sbc_common_crc8(const uint8_t *data, uint32_t len)
+uint8_t sbc_common_crc8(const uint8_t *data, uint32_t len)
 {
 	uint8_t crc = 0x0f;
 	int i;
@@ -108,7 +108,7 @@ static uint8_t sbc_common_crc8(const uint8_t *data, uint32_t len)
 	return crc;
 }
 
-void sbc_common_bit_allocation(sbc_framer *sbc)
+void sbc_common_bit_allocation(sbc_frame_info *sbc)
 {
     int32_t  ch;
     int32_t  sb;
