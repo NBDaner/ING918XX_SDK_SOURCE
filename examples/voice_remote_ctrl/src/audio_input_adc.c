@@ -63,6 +63,18 @@ void audio_input_stop(void)
 
 static DMA_PingPong_t PingPong;
 
+uint16_t filter(uint16_t data)
+{
+    uint16_t results;
+    if((data&0x3f)<48){
+        results = (64*(data/64)) + ((4*(data&0x3f))/3);
+        return results;
+    } else {
+        results = (64*(data/64)) + 64;
+        return results;
+    }
+}
+
 static uint32_t DMA_cb_isr(void *user_data)
 {
     uint32_t state = DMA_GetChannelIntState(DMA_CHANNEL);
@@ -72,19 +84,21 @@ static uint32_t DMA_cb_isr(void *user_data)
     uint32_t tranSize = DMA_PingPongGetTransSize(&PingPong);
     for (uint32_t i = 0; i < tranSize; ++i) {
         if (ADC_GetDataChannel(buff[i]) != ADC_CHANNEL) continue;
-        uint16_t sample = ADC_GetData(buff[i]);
+        uint16_t sample = filter(ADC_GetData(buff[i]));
         audio_rx_sample((pcm_sample_t)(sample - 0x2000));
     }
     return 0;
 }
 void audio_input_setup(void)
 {
+    printf("audio_input_setup begin\n");
     SYSCTRL_ClearClkGateMulti((1 << SYSCTRL_ITEM_APB_DMA));
 
     SYSCTRL_ClearClkGate(SYSCTRL_ITEM_APB_ADC);
     SYSCTRL_SetAdcClkDiv(24 / ADC_CLK_MHZ);
     SYSCTRL_ReleaseBlock(SYSCTRL_ITEM_APB_ADC);
     ADC_Reset();
+    ADC_ftInit();
     ADC_Calibration(DIFFERENTAIL_MODE);
     ADC_ConvCfg(CONTINUES_MODE, PGA_GAIN_16, 1, ADC_CHANNEL, 0, 8, 
                 DIFFERENTAIL_MODE, LOOP_DELAY(ADC_CLK_MHZ, SAMPLING_RATE));
@@ -92,17 +106,22 @@ void audio_input_setup(void)
     SYSCTRL_SelectUsedDmaItems(1 << 9);
     DMA_PingPongSetup(&PingPong, SYSCTRL_DMA_ADC, 80, 8);
     platform_set_irq_callback(PLATFORM_CB_IRQ_DMA, DMA_cb_isr, 0);
+    printf("audio_input_setup end\n");
 }
 void audio_input_start(void)
 {
+    printf("audio_input_start begin\n");
     DMA_PingPongEnable(&PingPong, DMA_CHANNEL);
     ADC_Start(1);
+    printf("audio_input_start end\n");
 }
 
 void audio_input_stop(void)
 {
+    printf("audio_input_stop begin\n");
     DMA_PingPongDisable(&PingPong, DMA_CHANNEL);
     ADC_Start(0);
+    printf("audio_input_stop end\n");
 }
 
 #endif

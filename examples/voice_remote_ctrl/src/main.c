@@ -165,8 +165,10 @@ int app_main()
     // setup putc handle
     platform_set_evt_callback(PLATFORM_CB_EVT_PUTC, (f_platform_evt_cb)cb_putc, NULL);
 
+    printf("[audio_dev_status] == initializing...\n");
     audio_init();
-
+    printf("[audio_dev_status] == initialized\n");
+    printf("==================================================\n");
 #if (BOARD == BOARD_REM)
     platform_set_irq_callback(PLATFORM_CB_IRQ_TIMER2, kb_scan_isr, NULL);
     TMR_Enable(APB_TMR2);

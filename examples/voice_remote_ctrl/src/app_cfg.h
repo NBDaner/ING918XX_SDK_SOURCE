@@ -20,7 +20,12 @@
 #define ADC_CHANNEL_ID          4
 #endif
 
-#define EFFECTIVE_SAMPLING_RATE  16000
+#define SAMPLING_RATE_16K   16000
+#define SAMPLING_RATE_44K   44100
+#define SAMPLING_RATE_48K   48000
+#ifndef EFFECTIVE_SAMPLING_RATE
+#define EFFECTIVE_SAMPLING_RATE  SAMPLING_RATE_16K
+#endif
 
 #define OVER_SAMPLING        1                      // must be 2^n
 #define OVER_SAMPLING_MASK   (OVER_SAMPLING - 1)

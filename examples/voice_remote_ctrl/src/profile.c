@@ -1,4 +1,5 @@
 #include <stddef.h>
+#include <stdio.h>
 #include "platform_api.h"
 #include "att_db.h"
 #include "gap.h"
@@ -86,11 +87,14 @@ static int att_write_callback(hci_con_handle_t connection_handle, uint16_t att_h
             break;
         case CMD_MIC_OPEN:
             next_block = 0;
-            if (audio_notify_enable)
+            if (audio_notify_enable){
                 audio_start();
+                printf("[CMD_MIC_OPEN]\n");
+            }
             break;
         case CMD_MIC_CLOSE:
             audio_stop();
+            printf("[CMD_MIC_CLOSE]\n");
             break;
         }
         
@@ -118,6 +122,7 @@ static int att_write_callback(hci_con_handle_t connection_handle, uint16_t att_h
 
 void audio_trigger_send(void)
 {
+    static int cnt = 0;
     if (audio_notify_enable)
         btstack_push_user_msg(USER_MSG_ID_REQUEST_SEND_AUDIO, NULL, 0);
 }
@@ -181,6 +186,11 @@ static void setup_adv()
     gap_set_ext_adv_enable(1, sizeof(adv_sets_en) / sizeof(adv_sets_en[0]), adv_sets_en);
 }
 
+#define CPI_VAL_TO_MS(x)   ((uint16_t)(x * 5 / 4))
+#define CPI_MS_TO_VAL(x)    ((uint16_t)(x * 4 / 5))
+#define CPSTT_VAL_TO_MS(x)  ((uint16_t)(x * 10))
+#define CPSTT_MS_TO_VAL(x)  ((uint16_t)(x / 10))
+
 static void user_packet_handler(uint8_t packet_type, uint16_t channel, const uint8_t *packet, uint16_t size)
 {
     uint8_t event = hci_event_packet_get_type(packet);
@@ -202,6 +212,25 @@ static void user_packet_handler(uint8_t packet_type, uint16_t channel, const uin
         case HCI_SUBEVENT_LE_ENHANCED_CONNECTION_COMPLETE:
             handle_send = decode_hci_le_meta_event(packet, le_meta_event_enh_create_conn_complete_t)->handle;
             att_set_db(handle_send, profile_data);
+            break;
+        case HCI_SUBEVENT_LE_CONNECTION_UPDATE_COMPLETE:{
+            static uint8_t flag = 2;
+            const le_meta_event_conn_update_complete_t *conn_update = 
+            decode_hci_le_meta_event(packet, le_meta_event_conn_update_complete_t);
+            printf("\nconn update complete:%d\n", conn_update->status);
+                if(conn_update->status == ERROR_CODE_SUCCESS){
+                    uint16_t my_conn_interval_ms = CPI_VAL_TO_MS(conn_update->interval);
+                    printf("status:%d\n", conn_update->status);
+                    printf("handle:%d\n", conn_update->handle);
+                    printf("interval:%dms\n", CPI_VAL_TO_MS(conn_update->interval));
+                    printf("sup_timeout:%dms\n", CPSTT_VAL_TO_MS(conn_update->sup_timeout));
+                    if (flag > 0 && my_conn_interval_ms == 60){
+                        flag --;
+                        printf("status1:%d\n", conn_update->status);
+                        update_conn_interval(handle_send, 12); // 15ms
+                    }
+                }
+            }
             break;
         default:
             break;

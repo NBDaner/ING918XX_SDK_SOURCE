@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "audio_service.h"
 #include "audio.h"
 #include "ingsoc.h"
@@ -20,8 +21,8 @@ uint16_t byte_index;
 uint16_t seq_cnt;
 int8_t mic_dig_gain = 0;
 
-#define SAMPLE_BUF_LEN  50
-#define SAMPLE_BUF_CNT  4
+#define SAMPLE_BUF_LEN  128
+#define SAMPLE_BUF_CNT  2
 
 int sample_buf_index = 0;
 int sample_index = 0;
@@ -135,7 +136,7 @@ static void audio_task(void *pdata)
 
         if (xQueueReceive(xSampleQueue, &index, portMAX_DELAY ) != pdPASS)
             continue;
-
+        printf("a frame./n");
         buf = sample_buf[index];
 
         for (i = 0; i < SAMPLE_BUF_LEN; i++)
@@ -165,11 +166,10 @@ void audio_init(void)
                                  &xStaticSampleQueue);
     xTaskCreate(audio_task,
                "b",
-               150,
+               600,
                NULL,
                (configMAX_PRIORITIES - 1),
                NULL);
-
     audio_input_setup();
 }
 
