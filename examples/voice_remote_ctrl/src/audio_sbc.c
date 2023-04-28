@@ -633,6 +633,8 @@ static int sbc_pack_frame(uint8_t *data, sbc_frame *frame, int len)
 		crc_header[crc_pos >> 3] <<= 8 - (crc_pos % 8);
 
 	data[3] = sbc_crc8(crc_header, crc_pos);
+
+	sbc_calculate_bits(frame, bits);
 	printf("[----bits----]=(");
 	for (ch = 0; ch < frame->channels; ch++) {
 		for (sb = 0; sb < frame->subbands; sb++) {
@@ -640,8 +642,6 @@ static int sbc_pack_frame(uint8_t *data, sbc_frame *frame, int len)
 		}
 		printf(")\r\n");
 	}
-
-	sbc_calculate_bits(frame, bits);
 
 	printf("[---levels---]=(");
 	for (ch = 0; ch < frame->channels; ch++)

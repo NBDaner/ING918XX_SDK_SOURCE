@@ -225,8 +225,7 @@ static void audio_sbc_task(void *pdata)
         if(encodelen == codesize) 
         {
             for (int i=0; i<framelen; i++) {
-                enc_output_cb(*(outp + i), 0); 
-		        printf("%c ",*(outp+i));	
+                enc_output_cb(*(outp + i), 0); 	
             } 
             printf("\n");
         }
@@ -265,6 +264,35 @@ void audio_rx_sample(pcm_sample_t sample)
     }
 }
 
+#if defined(KB_TEST)
+#define CTRL_KEY    GIO_GPIO_6
+
+uint32_t gpio_isr(void *user_data)
+{
+    uint32_t current = ~GIO_ReadAll();
+
+    // report which keys are pressed
+    if (current & (1 << CTRL_KEY))
+    {
+        static int last = 0;
+
+        if (last)
+        {
+            audio_input_stop();
+            last = 0;
+        }
+        else
+        {
+            audio_input_start();
+            last = 1;
+        }
+    }
+    
+    GIO_ClearAllIntStatus();
+    return 0;
+}
+#endif
+
 static void enc_state_init(audio_enc_t *audio);
 static void audio_task_register();
 
@@ -290,7 +318,13 @@ void audio_init(void)
     
     audio_input_setup();
     LOG_PRINTF(LOG_LEVEL_INFO,"Initialization completed.");
-    // audio_start();
+#if defined(KB_TEST)
+    PINCTRL_SetPadMux(CTRL_KEY, IO_SOURCE_GENERAL);
+    GIO_SetDirection(CTRL_KEY, GIO_DIR_INPUT);
+    GIO_ConfigIntSource(CTRL_KEY, GIO_INT_EN_LOGIC_LOW_OR_FALLING_EDGE,
+                        GIO_INT_EDGE);
+    platform_set_irq_callback(PLATFORM_CB_IRQ_GPIO, gpio_isr, NULL);
+#endif
 }
 
 static void enc_state_init(audio_enc_t *audio)
