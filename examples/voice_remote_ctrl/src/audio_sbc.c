@@ -656,25 +656,31 @@ static int sbc_pack_frame(uint8_t *data, sbc_frame *frame, int len)
 	printf("\r\n");
 
 
-	for (blk = 0; blk < frame->blocks; blk++) {
-		for (ch = 0; ch < frame->channels; ch++) {
-			for (sb = 0; sb < frame->subbands; sb++) {
-				if (levels[ch][sb] > 0) {
-				audio_sample =
-					(uint16_t) ((((frame->sb_sample_f[blk][ch][sb]*levels[ch][sb]) >>
-									(frame->scale_factor[ch][sb] + 1)) +
-								levels[ch][sb]) >> 1);
+	for(blk = 0; blk < frame->blocks; blk++)
+	{
+		for(ch = 0; ch < frame->channels; ch++)
+		{
+			for(sb = 0; sb < frame->subbands; sb++)
+			{
+				if(levels[ch][sb] > 0)
+				{
+					audio_sample = (uint16_t) ((((frame->sb_sample_f[blk][ch][sb]*levels[ch][sb]) >>
+									(frame->scale_factor[ch][sb] + 1)) + levels[ch][sb]) >> 1);
 					audio_sample <<= 16 - bits[ch][sb];
-					for (bit = 0; bit < bits[ch][sb]; bit++) {
+					for(bit = 0; bit < bits[ch][sb]; bit++)
+					{
 						data[produced >> 3] <<= 1;
 						if (audio_sample & 0x8000)
 							data[produced >> 3] |= 0x1;
 						audio_sample <<= 1;
 						produced++;
 					}
+					printf("%d ",audio_sample);
 				 }
 			}
+			printf("  ");
 		}
+		printf("\n");
 	}
 
 	/* align the last byte */
