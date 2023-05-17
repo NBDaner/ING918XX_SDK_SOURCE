@@ -38,9 +38,10 @@ void enc_output_cb(uint8_t output, void *param)
 {
     data_buffer[block_index][byte_index] = output;
     byte_index++;
-
+    printf("[%x]",output);
     if (byte_index >= VOICE_BUF_BLOCK_SIZE)
     {
+        printf("\n");
         block_index++;
         audio_trigger_send();
         if (block_index >= VOICE_BUF_BLOCK_NUM)
@@ -144,6 +145,9 @@ static void audio_task(void *pdata)
 
 #if (OVER_SAMPLING_MASK != 0)
     int oversample_cnt = 0;
+    static pcm_sample_t *buffer = NULL;
+		buffer = malloc(input_size * sizeof(pcm_sample_t));
+    static int buffer_index = 0;
 #endif
     pcm_sample_t *buf;
     for (;;)
@@ -167,12 +171,21 @@ static void audio_task(void *pdata)
                 continue;
             }
             else
+            {
                 sample = fir_push_run(&fir, sample);
-
-            buf[i] = sample;
+                buffer[buffer_index++] = sample;
+            }
+            
+            if(buffer_index >= input_size)
+            {
+                aud_enc_t.encoder(enc, buffer, input_size, outp, output_size);
+                buffer_index = 0;
+                printf("ok");
+            }
         }
-#endif
+#else
         aud_enc_t.encoder(enc, buf, input_size, outp, output_size);
+#endif
     }
 }
 
@@ -232,6 +245,7 @@ void audio_init(void)
 
     audio_input_setup();
     LOG_PRINTF(LOG_LEVEL_INFO,"Initialization completed.");
+    audio_start();
 }
 
 static void enc_state_init(audio_encoder_t *enc_t)

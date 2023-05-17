@@ -450,8 +450,10 @@ static int sbc_pack_frame(uint8_t *data, sbc_frame *frame, int len)
 	crc_header[1] = data[2];
 	crc_pos = 16;
 
+	printf("\nscale_factor={");
 	for (ch = 0; ch < frame->channels; ch++)
 	{
+		printf("(");
 		for (sb = 0; sb < frame->subbands; sb++)
 		{
 			frame->scale_factor[ch][sb] = 0;
@@ -464,8 +466,12 @@ static int sbc_pack_frame(uint8_t *data, sbc_frame *frame, int len)
 					scalefactor[ch][sb] *= 2;
 				}
 			}
+			printf("%d,",frame->scale_factor[ch][sb]);
 		}
+		printf(")");
 	}
+	printf("}  ");
+
 
 	if (frame->mode == SBC_MODE_JOINT_STEREO)
 	{
@@ -556,13 +562,29 @@ static int sbc_pack_frame(uint8_t *data, sbc_frame *frame, int len)
 	data[3] = sbc_crc8(crc_header, crc_pos);
 	sbc_calculate_bits(frame, bits);
 
+	printf("bits={");
 	for (ch = 0; ch < frame->channels; ch++)
 	{
+		printf("(");
+		for (sb = 0; sb < frame->subbands; sb++) {
+			printf("%d,", bits[ch][sb]);
+		}
+		printf(")");
+	}
+	printf("}  ");
+
+	printf("levels={");
+	for (ch = 0; ch < frame->channels; ch++)
+	{
+		printf("(");
 		for (sb = 0; sb < frame->subbands; sb++)
 		{
 			levels[ch][sb] = (1 << bits[ch][sb]) - 1;
+			printf("%d,", bits[ch][sb]);
 		}
+		printf(")");
 	}
+	printf("}\n\n");
 
 	for (blk = 0; blk < frame->blocks; blk++)
 	{
@@ -665,6 +687,8 @@ static inline void sbc_analyze_four(sbc_encoder_state *state,
 	x[41] = x[1] = pcm[2];
 	x[42] = x[2] = pcm[1];
 	x[43] = x[3] = pcm[0];
+
+	printf("\nInput-4{[%d][%d][%d][%d]}    ",pcm[0],pcm[1],pcm[2],pcm[3]);
 
 	__sbc_analyze_four(x, frame->sb_sample_f[blk][ch]);
 
@@ -794,6 +818,7 @@ void sbc_encode(sbc_t *sbc,
 		}
 	}
 
+	sbc_analyze_audio(&priv->enc_state, &priv->frame);
 	framelen = sbc_pack_frame(output,&priv->frame, output_len);
 
 	//using the output interface
@@ -930,6 +955,8 @@ static void __sbc_analyze_four(const int32_t *in, int32_t *out)
 						 MULA(_sbc_proto_4[3], in[31],
 						 MUL( _sbc_proto_4[2], in[39]))))));
 
+	printf("P-Calc{[%d][%d][%d][%d][%d][%d][%d][%d]}     ",t[0],t[1],t[2],t[3],t[4],t[5],t[6],t[7]);
+
 	/* -Partial Calculation-
 		for i = 0 to 7 do
 			for k = 0 to 4 do
@@ -945,6 +972,7 @@ static void __sbc_analyze_four(const int32_t *in, int32_t *out)
 	out[1] = SCALE4_STAGE2(-s[0] + s[1] + s[3]);
 	out[2] = SCALE4_STAGE2(-s[0] + s[1] - s[3]);
 	out[3] = SCALE4_STAGE2( s[0] + s[1] - s[2] + s[4]);
+	printf("Output-4{[%d][%d][%d][%d]}",out[0],out[1],out[2],out[3]);
 }
 
 static void __sbc_analyze_eight(const int32_t *in, int32_t *out)
