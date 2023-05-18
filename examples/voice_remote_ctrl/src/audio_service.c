@@ -38,10 +38,14 @@ void enc_output_cb(uint8_t output, void *param)
 {
     data_buffer[block_index][byte_index] = output;
     byte_index++;
+#if defined(DEBUG_SBC)
     printf("[%x]",output);
+#endif
     if (byte_index >= VOICE_BUF_BLOCK_SIZE)
     {
+#if defined(DEBUG_SBC)
         printf("\n\n");
+#endif
         block_index++;
         audio_trigger_send();
         if (block_index >= VOICE_BUF_BLOCK_NUM)
@@ -270,6 +274,5 @@ static void enc_state_init(audio_encoder_t *enc_t)
     enc_t->sample_buf.size = sbc_get_codesize(&sbc);
     LOG_PRINTF_TAB(LOG_LEVEL_INFO,"Parameter configured successfully.");
     enc_t->encoder = (fun_encoder)sbc_encode;
-    printf("output_size = %d\n",sbc_get_frame_length(&sbc));
 #endif
 }
