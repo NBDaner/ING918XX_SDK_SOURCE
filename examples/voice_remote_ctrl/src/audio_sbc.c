@@ -580,22 +580,28 @@ static int sbc_pack_frame(uint8_t *data, sbc_frame *frame, int len)
 		for (sb = 0; sb < frame->subbands; sb++)
 		{
 			levels[ch][sb] = (1 << bits[ch][sb]) - 1;
-			printf("%d,", bits[ch][sb]);
+			printf("%d,", levels[ch][sb]);
 		}
 		printf(")");
 	}
-	printf("}\n\n");
+	printf("}\n");
 
+	printf("audio_sample/sb_sample_f=\n");
 	for (blk = 0; blk < frame->blocks; blk++)
 	{
+		printf("{");
 		for (ch = 0; ch < frame->channels; ch++)
 		{
+			printf("(");
 			for (sb = 0; sb < frame->subbands; sb++)
 			{
 				if (levels[ch][sb] > 0)
 				{
 					audio_sample = (uint16_t) ((((frame->sb_sample_f[blk][ch][sb]*levels[ch][sb]) >>
 										(frame->scale_factor[ch][sb] + 1)) + levels[ch][sb]) >> 1);
+					// audio_sample = (uint16_t) ((((frame->sb_sample_f[blk][ch][sb]*levels[ch][sb] + (1 << frame->scale_factor[ch][sb])) >>
+					// 					(frame->scale_factor[ch][sb] + 1)) + levels[ch][sb]) >> 1);
+					printf("%x/%x,",audio_sample,frame->sb_sample_f[blk][ch][sb]);
 					audio_sample <<= 16 - bits[ch][sb];
 
 					for (bit = 0; bit < bits[ch][sb]; bit++)
@@ -608,8 +614,11 @@ static int sbc_pack_frame(uint8_t *data, sbc_frame *frame, int len)
 					}
 				 }
 			}
+			printf(") ");
 		}
+		printf("}\n");
 	}
+
 
 	/* align the last byte */
 	if (produced % 8)
@@ -643,7 +652,7 @@ static void sbc_set_defaults(sbc_t *sbc, uint8_t flags)
 	sbc->subbands = SBC_SB_4;
 	sbc->blocks = SBC_BLK_16;
     sbc->allocation = SBC_AM_SNR;
-	sbc->bitpool = 9;
+	sbc->bitpool = 32;
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 	sbc->endian = SBC_LE;
 #elif __BYTE_ORDER == __BIG_ENDIAN
