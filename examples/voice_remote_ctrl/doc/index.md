@@ -34,4 +34,4 @@ Note: algorithm selection on APP side should be consistent with algorithm select
 
 * Software based key matrix scan is implemented in [`kb_scan.c`](../src/kb_scan.c);
 * Audio is encoded in ADPCM or SBC and transmitted to _ING demo_ through _INGCHIPS Voice Output_ Service;
-* Encoder selected macro defined switch in [`audio_encoder.h`](../src/audio_encoder.h).
+* Encoder selected macro defined switch in [`audio_codec.h`](../src/audio_codec.h).

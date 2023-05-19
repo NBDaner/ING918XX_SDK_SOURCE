@@ -1,5 +1,5 @@
-#ifndef _AUDIO_ENCODER_H_
-#define _AUDIO_ENCODER_H_
+#ifndef _AUDIO_CODEC_H_
+#define _AUDIO_CODEC_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,6 +32,7 @@ typedef struct
 }sample_buf_t;
 
 typedef void (* fun_encoder)(void *enc, void *input, int input_size, void *output, int output_size);
+typedef void (* fun_decoder)(void *enc, void *input, int input_size, void *output, int output_size);
 
 typedef struct
 {
@@ -45,10 +46,11 @@ typedef struct
     sample_buf_t sample_buf;
 
     fun_encoder encoder;
+    fun_decoder decoder;
 }audio_encoder_t;
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  //_AUDIO_ENCODER_H_
+#endif  //_AUDIO_CODEC_H_

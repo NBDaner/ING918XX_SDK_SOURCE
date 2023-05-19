@@ -55,10 +55,12 @@ typedef struct{
 
 	void *priv;
 	void *priv_alloc_base;
-	sbc_encode_output_cb_f callback;
+	sbc_encode_output_cb_f enc_callback;
+	sbc_decode_output_cb_f dec_callback;
 }sbc_t;
 
 int sbc_enc_init(sbc_t *sbc, sbc_encode_output_cb_f callback, uint8_t flags);
+int sbc_dec_init(sbc_t *sbc, sbc_decode_output_cb_f callback, uint8_t flags);
 int sbc_reinit(sbc_t *sbc, uint8_t flags);
 
 /* Encodes ONE input block into ONE output block */
@@ -67,6 +69,12 @@ void sbc_encode(sbc_t *sbc,
 			   int input_len,
 			   void *output, 
 			   int output_len);
+
+void sbc_decode(sbc_t *sbc, 
+				const uint8_t *input, 
+				int input_len,
+				void *output, 
+				int output_len);
 
 /* Returns the compressed block size in bytes */
 int sbc_get_frame_length(sbc_t *sbc);

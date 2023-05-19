@@ -670,6 +670,7 @@ struct sbc_priv {
 	bool init;
 	sbc_frame frame;
 	sbc_encoder_state enc_state;
+	sbc_decoder_state dec_state;
 };
 
 static void sbc_set_defaults(sbc_t *sbc, uint8_t flags)
@@ -707,7 +708,7 @@ int sbc_enc_init(sbc_t *sbc,  sbc_encode_output_cb_f callback, uint8_t flags)
 
 	memset(sbc->priv, 0, sizeof(struct sbc_priv));
 	sbc_set_defaults(sbc, flags);
-	sbc->callback = callback;
+	sbc->enc_callback = callback;
 
 	return 0;
 }
@@ -863,7 +864,7 @@ void sbc_encode(sbc_t *sbc,
 	//using the output interface
 	for (i=0; i < framelen; i++)
 	{
-		sbc->callback(*((uint8_t *)(output) + i), 0);
+		sbc->enc_callback(*((uint8_t *)(output) + i), 0);
 	}
 }
 
@@ -1127,4 +1128,468 @@ static void __sbc_analyze_eight(const int32_t *in, int32_t *out)
         out[5] = SCALE8_STAGE2( (s[0] - s[1]) - s[8] + (s[9] - s[6]));
         out[6] = SCALE8_STAGE2( (s[0] - s[1]) + (s[8] - s[9]) - s[5]);
 		out[7] = SCALE8_STAGE2( (s[0] + s[1]) + (s[2] + s[3]) - s[4] );
+}
+
+/* ================================================decode related code====================================================================*/
+
+static void sbc_synthesize_four(sbc_decoder_state *state,
+								sbc_frame *frame, 
+								int ch, 
+								int blk)
+{
+	int i, k, idx;
+	int32_t *v = state->V[ch];   		//V[2][170] 
+	int *offset = state->offset[ch];    //offset[2][16] 
+
+	for (i = 0; i < 8; i++) {
+		/* Shifting */
+		offset[i]--;
+		if (offset[i] < 0) {
+			offset[i] = 79;
+			memcpy(v + 80, v, 9 * sizeof(*v));
+		}
+
+		/* Distribute the new matrix value to the shifted position */
+		v[offset[i]] = SCALE4_STAGED1(
+			MULA(synmatrix4[i][0], frame->sb_sample[blk][ch][0],
+			MULA(synmatrix4[i][1], frame->sb_sample[blk][ch][1],
+			MULA(synmatrix4[i][2], frame->sb_sample[blk][ch][2],
+			MUL (synmatrix4[i][3], frame->sb_sample[blk][ch][3])))));
+	}
+
+	/* Compute the samples */
+	for (idx = 0, i = 0; i < 4; i++, idx += 5) {
+		k = (i + 4) & 0xf;
+
+		/* Store in output, Q0 */
+
+		frame->pcm_sample[ch][blk * 4 + i] = sbc_clip16(SCALE4_STAGED1(
+			MULA(v[offset[i] + 0], sbc_proto_4_40m0[idx + 0],
+			MULA(v[offset[k] + 1], sbc_proto_4_40m1[idx + 0],
+			MULA(v[offset[i] + 2], sbc_proto_4_40m0[idx + 1],
+			MULA(v[offset[k] + 3], sbc_proto_4_40m1[idx + 1],
+			MULA(v[offset[i] + 4], sbc_proto_4_40m0[idx + 2],
+			MULA(v[offset[k] + 5], sbc_proto_4_40m1[idx + 2],
+			MULA(v[offset[i] + 6], sbc_proto_4_40m0[idx + 3],
+			MULA(v[offset[k] + 7], sbc_proto_4_40m1[idx + 3],
+			MULA(v[offset[i] + 8], sbc_proto_4_40m0[idx + 4],
+			MUL( v[offset[k] + 9], sbc_proto_4_40m1[idx + 4]))))))))))));
+	}
+// #if defined(DEBUG_SBC_DEC)
+	printf("sb_sample{[%d][%d][%d][%d]}    ",	frame->sb_sample[blk][ch][0],
+												frame->sb_sample[blk][ch][1],
+												frame->sb_sample[blk][ch][2],
+												frame->sb_sample[blk][ch][3]);
+	printf("Matrixing{[%d][%d][%d][%d][%d][%d][%d][%d]}    ",	v[offset[0]],
+																v[offset[1]],
+																v[offset[2]],
+																v[offset[3]],
+																v[offset[4]],
+																v[offset[5]],
+																v[offset[6]],
+																v[offset[7]]);											
+	printf("audio_sample{[%d][%d][%d][%d]}\n",	frame->pcm_sample[ch][blk * 4 + 0],
+												frame->pcm_sample[ch][blk * 4 + 1],
+												frame->pcm_sample[ch][blk * 4 + 2],
+												frame->pcm_sample[ch][blk * 4 + 3]);
+// #endif
+}
+
+static void sbc_synthesize_eight(sbc_decoder_state *state,
+								 sbc_frame *frame,
+								 int ch,
+								 int blk)
+{
+	int i, j, k, idx;
+	int *offset = state->offset[ch];
+
+	for (i = 0; i < 16; i++) {
+		/* Shifting */
+		offset[i]--;
+		if (offset[i] < 0) {
+			offset[i] = 159;
+			for (j = 0; j < 9; j++)
+				state->V[ch][j + 160] = state->V[ch][j];
+		}
+
+		/* Distribute the new matrix value to the shifted position */
+		state->V[ch][offset[i]] = SCALE8_STAGED1(
+			MULA(synmatrix8[i][0], frame->sb_sample[blk][ch][0],
+			MULA(synmatrix8[i][1], frame->sb_sample[blk][ch][1],
+			MULA(synmatrix8[i][2], frame->sb_sample[blk][ch][2],
+			MULA(synmatrix8[i][3], frame->sb_sample[blk][ch][3],
+			MULA(synmatrix8[i][4], frame->sb_sample[blk][ch][4],
+			MULA(synmatrix8[i][5], frame->sb_sample[blk][ch][5],
+			MULA(synmatrix8[i][6], frame->sb_sample[blk][ch][6],
+			MUL( synmatrix8[i][7], frame->sb_sample[blk][ch][7])))))))));
+	}
+
+	/* Compute the samples */
+	for (idx = 0, i = 0; i < 8; i++, idx += 5) {
+		k = (i + 8) & 0xf;
+
+		/* Store in output, Q0 */
+		frame->pcm_sample[ch][blk * 8 + i] = sbc_clip16(SCALE8_STAGED1(
+			MULA(state->V[ch][offset[i] + 0], sbc_proto_8_80m0[idx + 0],
+			MULA(state->V[ch][offset[k] + 1], sbc_proto_8_80m1[idx + 0],
+			MULA(state->V[ch][offset[i] + 2], sbc_proto_8_80m0[idx + 1],
+			MULA(state->V[ch][offset[k] + 3], sbc_proto_8_80m1[idx + 1],
+			MULA(state->V[ch][offset[i] + 4], sbc_proto_8_80m0[idx + 2],
+			MULA(state->V[ch][offset[k] + 5], sbc_proto_8_80m1[idx + 2],
+			MULA(state->V[ch][offset[i] + 6], sbc_proto_8_80m0[idx + 3],
+			MULA(state->V[ch][offset[k] + 7], sbc_proto_8_80m1[idx + 3],
+			MULA(state->V[ch][offset[i] + 8], sbc_proto_8_80m0[idx + 4],
+			MUL( state->V[ch][offset[k] + 9], sbc_proto_8_80m1[idx + 4]))))))))))));
+	}
+}
+
+static int sbc_synthesize_audio(sbc_decoder_state *state,
+								sbc_frame *frame)
+{
+	int ch, blk;
+
+	switch (frame->subbands) {
+	case 4:
+		for (ch = 0; ch < frame->channels; ch++) {
+			for (blk = 0; blk < frame->blocks; blk++)
+				sbc_synthesize_four(state, frame, ch, blk);
+		}
+		return frame->blocks * 4;
+
+	case 8:
+		for (ch = 0; ch < frame->channels; ch++) {
+			for (blk = 0; blk < frame->blocks; blk++)
+				sbc_synthesize_eight(state, frame, ch, blk);
+		}
+		return frame->blocks * 8;
+
+	default:
+		return -EIO;
+	}
+}
+
+/*
+ * Unpacks a SBC frame at the beginning of the stream in data,
+ * which has at most len bytes into frame.
+ * Returns the length in bytes of the packed frame, or a negative
+ * value on error. The error codes are:
+ *
+ *  -1   Data stream too short
+ *  -2   Sync byte incorrect
+ *  -3   CRC8 incorrect
+ *  -4   Bitpool value out of bounds
+ */
+static int sbc_unpack_frame(const uint8_t *data,
+							sbc_frame *frame,
+							int len)
+{
+	int consumed;
+	/* Will copy the parts of the header that are relevant to crc
+	 * calculation here */
+	uint8_t crc_header[11] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+	int crc_pos = 0;
+	int32_t temp;
+
+	int audio_sample;
+	int ch, sb, blk, bit;	/* channel, subband, block and bit standard
+				   counters */
+	int bits[2][8];		/* bits distribution */
+	uint32_t levels[2][8];	/* levels derived from that */
+   // int bits[1[8];
+    //uint32_t levels[1][8];
+
+	if (len < 4)
+		return -1;
+
+	if (data[0] != SBC_SYNCWORD)
+		return -2;
+
+	frame->frequency = (data[1] >> 6) & 0x03;
+
+	frame->block_mode = (data[1] >> 4) & 0x03;
+	switch (frame->block_mode) {
+	case SBC_BLK_4:
+		frame->blocks = 4;
+		break;
+	case SBC_BLK_8:
+		frame->blocks = 8;
+		break;
+	case SBC_BLK_12:
+		frame->blocks = 12;
+		break;
+	case SBC_BLK_16:
+		frame->blocks = 16;
+		break;
+	}
+
+	frame->mode = ((data[1] >> 2) & 0x03);
+	switch (frame->mode) {
+	case SBC_MODE_MONO:
+		frame->channels = 1;
+		break;
+	case SBC_MODE_DUAL_CHANNEL:	/* fall-through */
+	case SBC_MODE_STEREO:
+	case SBC_MODE_JOINT_STEREO:
+		frame->channels = 2;
+		break;
+	}
+
+	frame->allocation = ((data[1] >> 1) & 0x01);
+
+	frame->subband_mode = (data[1] & 0x01);
+	frame->subbands = frame->subband_mode ? 8 : 4;
+
+	frame->bitpool = data[2];
+
+	if ((frame->mode == SBC_MODE_MONO || frame->mode == SBC_MODE_DUAL_CHANNEL) &&
+			frame->bitpool > 16 * frame->subbands)
+		return -4;
+
+	if ((frame->mode == SBC_MODE_STEREO || frame->mode == SBC_MODE_JOINT_STEREO) &&
+			frame->bitpool > 32 * frame->subbands)
+		return -4;
+
+	/* data[3] is crc, we're checking it later */
+
+	consumed = 32;
+
+	crc_header[0] = data[1];
+	crc_header[1] = data[2];
+	crc_pos = 16;
+
+	if (frame->mode == SBC_MODE_JOINT_STEREO) {
+		if (len * 8 < (unsigned int)(consumed + frame->subbands))
+			return -1;
+
+		frame->joint = 0x00;
+		for (sb = 0; sb < frame->subbands - 1; sb++)
+			frame->joint |= ((data[4] >> (7 - sb)) & 0x01) << sb;
+		if (frame->subbands == 4)
+			crc_header[crc_pos / 8] = data[4] & 0xf0;
+		else
+			crc_header[crc_pos / 8] = data[4];
+
+		consumed += frame->subbands;
+		crc_pos += frame->subbands;
+	}
+
+	if (len * 8 < (unsigned int)(consumed + (4 * frame->subbands * frame->channels)))
+		return -1;
+
+	for (ch = 0; ch < frame->channels; ch++) {
+		for (sb = 0; sb < frame->subbands; sb++) {
+			/* FIXME assert(consumed % 4 == 0); */
+			frame->scale_factor[ch][sb] =
+				(data[consumed >> 3] >> (4 - (consumed & 0x7))) & 0x0F;
+			crc_header[crc_pos >> 3] |=
+				frame->scale_factor[ch][sb] << (4 - (crc_pos & 0x7));
+			consumed += 4;
+			crc_pos += 4;
+		}
+	}
+
+	if (data[3] != sbc_crc8(crc_header, crc_pos))
+		return -3;
+
+	sbc_calculate_bits(frame, bits);
+
+	for (ch = 0; ch < frame->channels; ch++) {
+		for (sb = 0; sb < frame->subbands; sb++)
+			levels[ch][sb] = (1 << bits[ch][sb]) - 1;
+	}
+
+// #if defined(DEBUG_SBC_DEC)
+	printf("\nscale_factor={");
+	for (ch = 0; ch < frame->channels; ch++)
+	{
+		printf("(");
+		for (sb = 0; sb < frame->subbands; sb++)
+		{
+
+			printf("%d,",frame->scale_factor[ch][sb]);
+		}
+		printf(")");
+	}
+	printf("}  ");
+	
+	printf("bits={");
+	for (ch = 0; ch < frame->channels; ch++)
+	{
+		printf("(");
+		for (sb = 0; sb < frame->subbands; sb++) {
+			printf("%d,", bits[ch][sb]);
+		}
+		printf(")");
+	}
+	printf("}  ");
+
+	printf("levels={");
+	for (ch = 0; ch < frame->channels; ch++)
+	{
+		printf("(");
+		for (sb = 0; sb < frame->subbands; sb++)
+		{
+			levels[ch][sb] = (1 << bits[ch][sb]) - 1;
+			printf("%d,", levels[ch][sb]);
+		}
+		printf(")");
+	}
+	printf("}\n");
+// #endif
+
+// #if defined(DEBUG_SBC_DEC)
+	printf("audio_sample/frame.sb_sample=\n");
+// #endif
+	for (blk = 0; blk < frame->blocks; blk++)
+	{
+	// #if defined(DEBUG_SBC_DEC)
+		printf("{");
+	// #endif
+		for (ch = 0; ch < frame->channels; ch++)
+		{
+		// #if defined(DEBUG_SBC_DEC)
+			printf("(");
+		// #endif
+			for (sb = 0; sb < frame->subbands; sb++) {
+				if (levels[ch][sb] > 0) {
+					audio_sample = 0;
+					for (bit = 0; bit < bits[ch][sb]; bit++) {
+						if (consumed > len * 8)
+							return -1;
+
+						if ((data[consumed >> 3] >> (7 - (consumed & 0x7))) & 0x01)
+							audio_sample |= 1 << (bits[ch][sb] - bit - 1);
+
+						consumed++;
+					}
+
+					frame->sb_sample[blk][ch][sb] =
+						(((audio_sample << 1) | 1) << (frame->scale_factor[ch][sb] + 1)) /
+						levels[ch][sb] - (1 << (frame->scale_factor[ch][sb] + 1));
+				// #if defined(DEBUG_SBC_DEC)
+					printf("%x/%x,",audio_sample,frame->sb_sample[blk][ch][sb]);
+				// #endif
+				} else
+					frame->sb_sample[blk][ch][sb] = 0;
+			}
+		// #if defined(DEBUG_SBC_DEC)
+			printf(")");
+		// #endif
+		}
+	// #if defined(DEBUG_SBC_DEC)
+		printf("}\n");
+	// #endif
+	}
+
+	if (frame->mode == SBC_MODE_JOINT_STEREO) {
+		for (blk = 0; blk < frame->blocks; blk++) {
+			for (sb = 0; sb < frame->subbands; sb++) {
+				if (frame->joint & (0x01 << sb)) {
+					temp = frame->sb_sample[blk][0][sb] +
+						frame->sb_sample[blk][1][sb];
+					frame->sb_sample[blk][1][sb] =
+						frame->sb_sample[blk][0][sb] -
+						frame->sb_sample[blk][1][sb];
+					frame->sb_sample[blk][0][sb] = temp;
+				}
+			}
+		}
+	}
+
+	if ((consumed & 0x7) != 0)
+		consumed += 8 - (consumed & 0x7);
+
+	return consumed >> 3;
+}
+
+static void sbc_decoder_init(sbc_decoder_state *state,
+							 sbc_frame *frame)
+{
+	int i, ch;
+
+	memset(state->V, 0, sizeof(state->V));
+	state->subbands = frame->subbands;
+	for (ch = 0; ch < 2; ch++)
+		for (i = 0; i < frame->subbands * 2; i++)
+			state->offset[ch][i] = (10 * i + 10);
+}
+
+void sbc_decode(sbc_t *sbc, 
+				const uint8_t *input, 
+				int input_len,
+				void *output, 
+				int output_len)
+{
+	struct sbc_priv *priv;
+	uint8_t *ptr;
+	int i, ch, codesize, samples;
+
+	priv = sbc->priv;
+
+	printf("!");
+	codesize = sbc_unpack_frame(input, &priv->frame, input_len);
+	printf("%d",codesize);
+	if (!priv->init) {
+		//初始化解码器
+		sbc_decoder_init(&priv->dec_state, &priv->frame);
+
+		sbc->frequency = priv->frame.frequency;
+		sbc->mode = priv->frame.mode;
+		sbc->subbands = priv->frame.subband_mode;
+		sbc->blocks = priv->frame.block_mode;
+		sbc->allocation = priv->frame.allocation;
+		sbc->bitpool = priv->frame.bitpool;
+
+		priv->frame.codesize = sbc_get_codesize(sbc);
+		priv->frame.length = sbc_get_frame_length(sbc);
+		priv->init = true;
+	} else if (priv->frame.bitpool != sbc->bitpool) {
+		priv->frame.codesize = codesize;
+		sbc->bitpool = priv->frame.bitpool;
+	}
+
+	//polyphase synthesis
+	//多相分析：
+	sbc_synthesize_audio(&priv->dec_state, &priv->frame);
+
+	ptr = output;
+
+	if (output_len < (size_t) (samples * priv->frame.channels * 2))
+		samples = output_len / (priv->frame.channels * 2);
+
+	for (i = 0; i < samples; i++) {
+		for (ch = 0; ch < priv->frame.channels; ch++) {
+			int16_t s;
+			s = priv->frame.pcm_sample[ch][i];
+
+			if (sbc->endian == SBC_LE) {
+				*ptr++ = (s & 0x00ff);
+				*ptr++ = (s & 0xff00) >> 8;
+			} else {
+				*ptr++ = (s & 0xff00) >> 8;
+				*ptr++ = (s & 0x00ff);
+			}
+		}
+	}
+}
+
+int sbc_dec_init(sbc_t *sbc,  sbc_decode_output_cb_f callback, uint8_t flags)
+{
+	if (!sbc)
+		return -EIO;
+
+	memset(sbc, 0, sizeof(sbc_t));
+	sbc->priv_alloc_base = malloc(sizeof(struct sbc_priv) + SBC_ALIGN_MASK);
+
+	if (!sbc->priv_alloc_base)
+		return -ENOMEM;
+
+	sbc->priv = (void *) (((uintptr_t) sbc->priv_alloc_base +
+			SBC_ALIGN_MASK) & ~((uintptr_t) SBC_ALIGN_MASK));
+
+	memset(sbc->priv, 0, sizeof(struct sbc_priv));
+	sbc_set_defaults(sbc, flags);
+	sbc->dec_callback = callback;
+
+	return 0;
 }
