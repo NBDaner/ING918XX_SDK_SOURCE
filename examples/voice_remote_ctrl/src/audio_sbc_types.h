@@ -55,19 +55,21 @@ typedef struct
 	int16_t pcm_sample[2][16*8];
 }sbc_frame;
 
+#if defined(ENCODE)
 typedef struct
 {
 	int subbands;
 	int position[2];
 	int32_t X[2][160];
 }sbc_encoder_state;
-
+#elif defined(DECODE)
 typedef struct
 {
 	int subbands;
-	int32_t  V[2][170];
 	int offset[2][16];
+	int32_t  V[2][170];
 }sbc_decoder_state;
+#endif
 
 #ifdef __cplusplus
 }

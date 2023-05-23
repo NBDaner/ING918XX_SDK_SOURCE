@@ -302,7 +302,7 @@ void audio_init(void)
         ip = enc_data + i*70;
         op = dec_data + i*128;
         printf("%x\n",ip[0]);
-        sbc_decode(enc,ip,70,op,128);
+        aud_enc_t.decoder(enc,ip,70,op,128);
     }
 
 }
@@ -324,6 +324,7 @@ static void enc_state_init(audio_encoder_t *enc_t)
     enc_t->type = SBC_ENCODER;
     LOG_PRINTF_TAB(LOG_LEVEL_INFO,"Encoder-->[SBC]");
     enc = &sbc;
+    enc_t->decoder = (fun_decoder)sbc_decode;
     // sbc_enc_init(enc, enc_output_cb, 0L);
     // LOG_PRINTF_TAB(LOG_LEVEL_INFO,"Configure encode's parameter...");
     // enc_t->sample_buf.num = 2;
