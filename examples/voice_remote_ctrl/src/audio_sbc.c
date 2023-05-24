@@ -554,7 +554,6 @@ static int sbc_pack_frame(uint8_t *data, sbc_frame *frame, int len)
 		}
 	}
 
-
 	if (frame->mode == SBC_MODE_JOINT_STEREO)
 	{
 		/* like frame->sb_sample but joint stereo */
@@ -623,6 +622,7 @@ static int sbc_pack_frame(uint8_t *data, sbc_frame *frame, int len)
 		produced += frame->subbands;
 		crc_pos += frame->subbands;
 	}
+
 
 	for (ch = 0; ch < frame->channels; ch++)
 	{
@@ -891,7 +891,7 @@ void sbc_encode(sbc_t *sbc,
 		priv->frame.frame_count = 0;
 		priv->frame.codesize = sbc_get_codesize(sbc);
 		priv->frame.length = sbc_get_frame_length(sbc);
-		// sbc_encoder_init(&priv->enc_state, &priv->frame);
+		sbc_encoder_init(&priv->enc_state, &priv->frame);
 		priv->init = true;
 	}
 	else if (priv->frame.bitpool != sbc->bitpool)
@@ -919,8 +919,10 @@ void sbc_encode(sbc_t *sbc,
 		}
 	}
 
-	// sbc_analyze_audio(&priv->enc_state, &priv->frame);
-	framelen = sbc_pack_frame(output,&priv->frame, output_len);
+	printf("sbc_analyze_audio\n");
+	sbc_analyze_audio(&priv->enc_state, &priv->frame);
+	printf("sbc_pack_frame\n");
+	framelen = sbc_pack_frame(output, &priv->frame, output_len);
 
 	//using the output interface
 	for (i=0; i < framelen; i++)
@@ -1150,6 +1152,11 @@ static void sbc_synthesize_four(sbc_decoder_state *state,
 	int32_t *v = state->V[ch];   		//V[2][170] 
 	int *offset = state->offset[ch];    //offset[2][16] 
 
+	frame->sb_sample[0][0][0] = 0xffffffff;
+	frame->sb_sample[0][0][1] = 0xffffffff;
+	frame->sb_sample[0][0][2] = 0xffffffff;
+	frame->sb_sample[0][0][3] = 0;
+
 	for (i = 0; i < 8; i++) {
 		/* Shifting */
 		offset[i]--;
@@ -1184,11 +1191,11 @@ static void sbc_synthesize_four(sbc_decoder_state *state,
 			MUL( v[offset[k] + 9], sbc_proto_4_40m1[idx + 4]))))))))))));
 	}
 // #if defined(DEBUG_SBC_DEC)
-	printf("sb_sample{[%-10d][%d][%d][%d]}    ",	frame->sb_sample[blk][ch][0],
+	printf("sb_sample{[%d][%d][%d][%d]}    ",	frame->sb_sample[blk][ch][0],
 												frame->sb_sample[blk][ch][1],
 												frame->sb_sample[blk][ch][2],
 												frame->sb_sample[blk][ch][3]);
-	printf("Matrixing{[%-10d][%d][%d][%d][%d][%d][%d][%d]}    ",	v[offset[0]],
+	printf("Matrixing{[%d][%d][%d][%d][%d][%d][%d][%d]}    ",	v[offset[0]],
 																v[offset[1]],
 																v[offset[2]],
 																v[offset[3]],
@@ -1196,7 +1203,7 @@ static void sbc_synthesize_four(sbc_decoder_state *state,
 																v[offset[5]],
 																v[offset[6]],
 																v[offset[7]]);																										
-	printf("audio_sample{[%-6d][%d][%d][%d]}\n",	frame->pcm_sample[ch][blk * 4 + 0],
+	printf("audio_sample{[%d][%d][%d][%d]}\n",	frame->pcm_sample[ch][blk * 4 + 0],
 												frame->pcm_sample[ch][blk * 4 + 1],
 												frame->pcm_sample[ch][blk * 4 + 2],
 												frame->pcm_sample[ch][blk * 4 + 3]);
@@ -1208,47 +1215,47 @@ static void sbc_synthesize_eight(sbc_decoder_state *state,
 								 int ch,
 								 int blk)
 {
-	// int i, j, k, idx;
-	// int *offset = state->offset[ch];
+	int i, j, k, idx;
+	int *offset = state->offset[ch];
 
-	// for (i = 0; i < 16; i++) {
-	// 	/* Shifting */
-	// 	offset[i]--;
-	// 	if (offset[i] < 0) {
-	// 		offset[i] = 159;
-	// 		for (j = 0; j < 9; j++)
-	// 			state->V[ch][j + 160] = state->V[ch][j];
-	// 	}
+	for (i = 0; i < 16; i++) {
+		/* Shifting */
+		offset[i]--;
+		if (offset[i] < 0) {
+			offset[i] = 159;
+			for (j = 0; j < 9; j++)
+				state->V[ch][j + 160] = state->V[ch][j];
+		}
 
-	// 	/* Distribute the new matrix value to the shifted position */
-	// 	state->V[ch][offset[i]] = SCALE8_STAGED1(
-	// 		MULA(synmatrix8[i][0], frame->sb_sample[blk][ch][0],
-	// 		MULA(synmatrix8[i][1], frame->sb_sample[blk][ch][1],
-	// 		MULA(synmatrix8[i][2], frame->sb_sample[blk][ch][2],
-	// 		MULA(synmatrix8[i][3], frame->sb_sample[blk][ch][3],
-	// 		MULA(synmatrix8[i][4], frame->sb_sample[blk][ch][4],
-	// 		MULA(synmatrix8[i][5], frame->sb_sample[blk][ch][5],
-	// 		MULA(synmatrix8[i][6], frame->sb_sample[blk][ch][6],
-	// 		MUL( synmatrix8[i][7], frame->sb_sample[blk][ch][7])))))))));
-	// }
+		/* Distribute the new matrix value to the shifted position */
+		state->V[ch][offset[i]] = SCALE8_STAGED1(
+			MULA(synmatrix8[i][0], frame->sb_sample[blk][ch][0],
+			MULA(synmatrix8[i][1], frame->sb_sample[blk][ch][1],
+			MULA(synmatrix8[i][2], frame->sb_sample[blk][ch][2],
+			MULA(synmatrix8[i][3], frame->sb_sample[blk][ch][3],
+			MULA(synmatrix8[i][4], frame->sb_sample[blk][ch][4],
+			MULA(synmatrix8[i][5], frame->sb_sample[blk][ch][5],
+			MULA(synmatrix8[i][6], frame->sb_sample[blk][ch][6],
+			MUL( synmatrix8[i][7], frame->sb_sample[blk][ch][7])))))))));
+	}
 
-	// /* Compute the samples */
-	// for (idx = 0, i = 0; i < 8; i++, idx += 5) {
-	// 	k = (i + 8) & 0xf;
+	/* Compute the samples */
+	for (idx = 0, i = 0; i < 8; i++, idx += 5) {
+		k = (i + 8) & 0xf;
 
-	// 	/* Store in output, Q0 */
-	// 	frame->pcm_sample[ch][blk * 8 + i] = sbc_clip16(SCALE8_STAGED1(
-	// 		MULA(state->V[ch][offset[i] + 0], sbc_proto_8_80m0[idx + 0],
-	// 		MULA(state->V[ch][offset[k] + 1], sbc_proto_8_80m1[idx + 0],
-	// 		MULA(state->V[ch][offset[i] + 2], sbc_proto_8_80m0[idx + 1],
-	// 		MULA(state->V[ch][offset[k] + 3], sbc_proto_8_80m1[idx + 1],
-	// 		MULA(state->V[ch][offset[i] + 4], sbc_proto_8_80m0[idx + 2],
-	// 		MULA(state->V[ch][offset[k] + 5], sbc_proto_8_80m1[idx + 2],
-	// 		MULA(state->V[ch][offset[i] + 6], sbc_proto_8_80m0[idx + 3],
-	// 		MULA(state->V[ch][offset[k] + 7], sbc_proto_8_80m1[idx + 3],
-	// 		MULA(state->V[ch][offset[i] + 8], sbc_proto_8_80m0[idx + 4],
-	// 		MUL( state->V[ch][offset[k] + 9], sbc_proto_8_80m1[idx + 4]))))))))))));
-	// }
+		/* Store in output, Q0 */
+		frame->pcm_sample[ch][blk * 8 + i] = sbc_clip16(SCALE8_STAGED1(
+			MULA(state->V[ch][offset[i] + 0], sbc_proto_8_80m0[idx + 0],
+			MULA(state->V[ch][offset[k] + 1], sbc_proto_8_80m1[idx + 0],
+			MULA(state->V[ch][offset[i] + 2], sbc_proto_8_80m0[idx + 1],
+			MULA(state->V[ch][offset[k] + 3], sbc_proto_8_80m1[idx + 1],
+			MULA(state->V[ch][offset[i] + 4], sbc_proto_8_80m0[idx + 2],
+			MULA(state->V[ch][offset[k] + 5], sbc_proto_8_80m1[idx + 2],
+			MULA(state->V[ch][offset[i] + 6], sbc_proto_8_80m0[idx + 3],
+			MULA(state->V[ch][offset[k] + 7], sbc_proto_8_80m1[idx + 3],
+			MULA(state->V[ch][offset[i] + 8], sbc_proto_8_80m0[idx + 4],
+			MUL( state->V[ch][offset[k] + 9], sbc_proto_8_80m1[idx + 4]))))))))))));
+	}
 }
 
 static int sbc_synthesize_audio(sbc_decoder_state *state,
