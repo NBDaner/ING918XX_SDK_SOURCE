@@ -1152,11 +1152,6 @@ static void sbc_synthesize_four(sbc_decoder_state *state,
 	int32_t *v = state->V[ch];   		//V[2][170] 
 	int *offset = state->offset[ch];    //offset[2][16] 
 
-	frame->sb_sample[0][0][0] = 0xffffffff;
-	frame->sb_sample[0][0][1] = 0xffffffff;
-	frame->sb_sample[0][0][2] = 0xffffffff;
-	frame->sb_sample[0][0][3] = 0;
-
 	for (i = 0; i < 8; i++) {
 		/* Shifting */
 		offset[i]--;

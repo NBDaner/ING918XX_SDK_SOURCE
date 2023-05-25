@@ -337,7 +337,7 @@
             <v6Rtti>0</v6Rtti>
             <VariousControls>
               <MiscControls></MiscControls>
-              <Define>USE_STDPERIPH_DRIVER,AUDIO_INPUT=1,AUDIO_CODEC_ALG=1,DECODE,DEBUG_SBC</Define>
+              <Define>USE_STDPERIPH_DRIVER,AUDIO_INPUT=1,AUDIO_CODEC_ALG=1,DEBUG_SBC</Define>
               <Undefine></Undefine>
               <IncludePath>../../bundles/typical/inc;../../bundles/typical/inc/os;../../src/BSP;../../src/FWlib;../../src/StartUP/ing916;../../src/Tools;../../src</IncludePath>
             </VariousControls>

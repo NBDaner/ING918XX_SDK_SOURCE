@@ -326,6 +326,17 @@ void audio_init(void)
     audio_input_setup();
     LOG_PRINTF(LOG_LEVEL_INFO,"Initialization completed.");
 
+    for ( int i = 0; i < 4; i++)
+    {
+        for (int k = 0; k < 8; k++)
+        {
+            printf("%f ",0.001);
+        }
+        printf("\n");
+    }
+    printf("\n");
+    
+
 #if defined(ENCODE)   
     audio_start();
 #elif defined(DECODE)
