@@ -59,7 +59,7 @@ static pedometer_info_t result =
 #define MOST_ACTIVE_X                     1
 #define MOST_ACTIVE_Y                     2
 #define MOST_ACTIVE_Z                     3
-#define ACTIVE_PRECISION    10
+#define ACTIVE_PRECISION    1
 
 #define ABS(a) (0 - (a)) > 0 ? (-(a)) : (a)
 
@@ -172,6 +172,7 @@ static char is_most_active(peak_value_t *peak)
     short x_change = ABS((peak->newmax.x - peak->newmin.x));
     short y_change = ABS((peak->newmax.y - peak->newmin.y));
     short z_change = ABS((peak->newmax.z - peak->newmin.z));
+    printf("x_change=%d y_change=%d z_change=%d\n",x_change,y_change,z_change);
 
     if (x_change > y_change && x_change > z_change && x_change >= ACTIVE_PRECISION)
         res = MOST_ACTIVE_X;
@@ -201,14 +202,17 @@ static void detect_step(peak_value_t *peak, slid_reg_t *slid)
     {
     case MOST_ACTIVE_X:
         check_axis(x);
+        printf("MOST_ACTIVE_X->[threshold=%d old_sample=%d new_sample=%d]\n",threshold,old_sample,new_sample);
         break;
 
     case MOST_ACTIVE_Y:
         check_axis(y);
+        printf("MOST_ACTIVE_Y->[threshold=%d old_sample=%d new_sample=%d]\n",threshold,old_sample,new_sample);
         break;
 
     case MOST_ACTIVE_Z:
         check_axis(z);
+        printf("MOST_ACTIVE_Z->[threshold=%d old_sample=%d new_sample=%d]\n",threshold,old_sample,new_sample);
         break;
     default:
         return;
@@ -219,6 +223,7 @@ static void detect_step(peak_value_t *peak, slid_reg_t *slid)
         result.total_steps++;
         result.temp_steps++;
     }
+    printf("total_steps=%d temp_steps=%d\n",result.total_steps,result.temp_steps);
 }
 
 static struct bma2x2_accel_data sample_xyz = {0};
@@ -276,6 +281,7 @@ void accelarator_sample(void)
     if (result.temp_sample_cnt >= ACC_SAMPLING_RATE * 10)
     {
         result.cadence = result.temp_steps * 6;
+        printf("stride_length=%d temp_steps%d\n",result.stride_length,result.temp_steps);
         result.speed = ((uint32_t)(result.stride_length * result.temp_steps) << 8) / (10 * 100);
         result.total_distance = result.stride_length * result.total_steps / 10;
         printf("%d,%d\n", result.speed, result.total_distance);
