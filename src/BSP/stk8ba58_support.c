@@ -18,7 +18,7 @@ struct stk8ba58_t stk8ba58 =
 int32_t stk8ba58_power_on()
 {
 	/* Local variable used to assign the bandwidth value*/
-	uint8_t bw_value_u8 = 0;
+	uint8_t bw_value = 0;
 	/* Local variable used to set the bandwidth value*/
 	uint8_t banwid = 0;
     /* status of communication*/
@@ -26,9 +26,9 @@ int32_t stk8ba58_power_on()
 
 	com_rslt = stk8ba58_init(&stk8ba58);
 
-	com_rslt += stk8ba58_set_power_mode(STK8BA58_MODE_NORMAL);
+	// com_rslt += stk8ba58_set_power_mode(STK8BA58_MODE_NORMAL);
 
-	bw_value_u8 = 0x08;/* set bandwidth of 7.81Hz*/
+	bw_value = 0x08;/* set bandwidth of 7.81Hz*/
 	com_rslt += stk8ba58_set_bw(bw_value);
 
 	/* This API used to read back the written value of bandwidth*/
@@ -37,10 +37,10 @@ int32_t stk8ba58_power_on()
     return com_rslt;
 }
 
-s32 stk8ba58_power_down(void)
-{
-    return stk8ba58_set_power_mode(STK8BA58_MODE_POWER_OFF);
-}
+// int32_t stk8ba58_power_down(void)
+// {
+//     return stk8ba58_set_power_mode(STK8BA58_MODE_POWER_OFF);
+// }
 
 int8_t STK8BA58_I2C_bus_write(uint8_t dev_addr, uint8_t reg_addr, uint8_t *reg_data, uint8_t cnt)
 {
@@ -53,7 +53,7 @@ int8_t STK8BA58_I2C_bus_write(uint8_t dev_addr, uint8_t reg_addr, uint8_t *reg_d
 	}
 
 	i2c_write(I2C_PORT_0, dev_addr, array, cnt + 1);
-	return (s8)iError;
+	return (int8_t)iError;
 }
 
 
@@ -63,5 +63,5 @@ int8_t STK8BA58_I2C_bus_read(uint8_t dev_addr, uint8_t reg_addr, uint8_t *reg_da
 
     //reg_data[0] = I2C_READ_BYTE(dev_addr, reg_addr);
 	i2c_read(I2C_PORT_0, dev_addr, &reg_addr, 1, reg_data, cnt);
-	return (s8)iError;
+	return (int8_t)iError;
 }

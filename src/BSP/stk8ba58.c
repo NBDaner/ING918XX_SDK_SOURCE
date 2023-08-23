@@ -2,30 +2,6 @@
 
 static struct stk8ba58_t *p_stk8ba58;
 
-STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_init(struct stk8ba58_t *stk8ba58)
-{
-    STK8BA58_RETURN_FUNCTION_TYPE com_rslt = ERROR; 
-	uint8_t data = 0;
-	uint8_t config_data = 0;
-    /* assign stk8ba58 ptr */
-    p_stk8ba58 = stk8ba58;
-	if (p_stk8ba58 == STK8BA58_NULL)
-    {
-		/* Check the struct p_stk8ba58 is empty */
-		com_rslt = E_STK8BA58_NULL_PTR;
-	} 
-    else 
-    {
- 		/* read Chip Id */ 
-        com_rslt = p_stk8ba58->STK8BA58_BUS_READ_FUNC(  p_stk8ba58->dev_addr,
-		                                                STK8BA58_CHIP_ID_REG, 
-                                                        &data, 1);
-        p_stk8ba58->chip_id = data;
-    }
-
-    return com_rslt;
-}
-
 STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_write_reg(uint8_t addr, uint8_t *data, uint8_t len)
 {
 	/*  Variable used to return value of
@@ -33,7 +9,7 @@ STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_write_reg(uint8_t addr, uint8_t *data, ui
 	STK8BA58_RETURN_FUNCTION_TYPE com_rslt = ERROR;
 
 	if (p_stk8ba58 == STK8BA58_NULL) {
-		/* Check the struct p_bma2x2 is empty */
+		/* Check the struct p_STK8BA58 is empty */
 		return E_STK8BA58_NULL_PTR;
 		} else {
 		/* Write the data to the register*/
@@ -43,7 +19,7 @@ STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_write_reg(uint8_t addr, uint8_t *data, ui
 		if (p_stk8ba58->power_mode != STK8BA58_MODE_NORMAL) {
 			/*A minimum interface idle time delay
 			of atleast 450us is required as per the data sheet.*/
-			p_bma2x2->delay_msec(STK8BA58_INTERFACE_IDLE_TIME_DELAY);
+			// p_stk8ba58->delay_msec(STK8BA58_INTERFACE_IDLE_TIME_DELAY);
 		}
 	}
 	return com_rslt;
@@ -56,7 +32,7 @@ STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_read_reg(uint8_t addr, uint8_t *data, uin
 	STK8BA58_RETURN_FUNCTION_TYPE com_rslt = ERROR;
 
 	if (p_stk8ba58 == STK8BA58_NULL) {
-		/* Check the struct p_bma2x2 is empty */
+		/* Check the struct p_STK8BA58 is empty */
 		return E_STK8BA58_NULL_PTR;
 		} else {
 			/*Read the data from the register*/
@@ -66,50 +42,539 @@ STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_read_reg(uint8_t addr, uint8_t *data, uin
 	return com_rslt;
 }
 
+STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_init(struct stk8ba58_t *stk8ba58)
+{
+    STK8BA58_RETURN_FUNCTION_TYPE com_rslt = ERROR; 
+	uint8_t data = 0;
+	uint8_t config_data = 0;
+    /* assign stk8ba58 ptr */
+    p_stk8ba58 = stk8ba58;
+	if (p_stk8ba58 == STK8BA58_NULL)
+    {
+		/* Check the struct p_stk8ba58 is empty */
+		com_rslt = E_STK8BA58_NULL_PTR;
+	} 
+    else
+    {
+ 		/* read Chip Id */ 
+        com_rslt = p_stk8ba58->STK8BA58_BUS_READ_FUNC
+		(p_stk8ba58->dev_addr,STK8BA58_CHIP_ID_ADDR,&data, 1);
+        p_stk8ba58->chip_id = data;
+    }
+
+    return com_rslt;
+}
+
 STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_read_accel_x(int16_t *accel_x)
 {
 	/*  Variable used to return value of
 	communication routine*/
 	STK8BA58_RETURN_FUNCTION_TYPE com_rslt = ERROR;
 	/* Array holding the accel x value
-	data_u8[0] - x->LSB
-	data_u8[1] - x->MSB
+							    | 7 | 6 | 5 | 4 | 3 | 2 | 1 |   0   |
+		data[0] - x->LSB		|   XOUT[3:0]   |  reverse  | NEW_X |
+		data[1] - x->MSB		|		      XOUT[11:4]		    |
 	*/
 	uint8_t	data[STK8BA58_ACCEL_DATA_SIZE] = {0};
-	if (p_stk8ba58 == STK8BA58_NULL) {
+	if (p_stk8ba58 == STK8BA58_NULL) 
+	{
 		/* Check the struct p_stk8ba58 is empty */
 		return E_STK8BA58_NULL_PTR;
-		} 
-        else 
-        {
+	} 
+    else 
+    {
 		/* This case used for the resolution bit 12*/
 			com_rslt = p_stk8ba58->STK8BA58_BUS_READ_FUNC
-			(p_stk8ba58->dev_addr,
-			STK8BA58_ACCEL_X12_LSB_REG, data,
-			STK8BA58_LSB_MSB_READ_LENGTH);
-			*accel_x = (int16_t)((((int32_t)((int8_t)
-			data[STK8BA58_SENSOR_DATA_ACCEL_MSB]))
-			<< STK8BA58_SHIFT_EIGHT_BITS) |
-			(data[STK8BA58_SENSOR_DATA_ACCEL_LSB] &
-			STK8BA58_RESOLUTION_12_MASK));
-			*accel_x = *accel_x >>
-			STK8BA58_SHIFT_FOUR_BITS;
-		}
+				(p_stk8ba58->dev_addr, STK8BA58_ACCEL_X_LSB_REG, data, STK8BA58_LSB_MSB_READ_LENGTH);
+			*accel_x = (int16_t)(
+				(((int32_t)((int8_t)data[STK8BA58_SENSOR_DATA_ACCEL_MSB])) << STK8BA58_SHIFT_EIGHT_BITS) 
+				| (data[STK8BA58_SENSOR_DATA_ACCEL_LSB] & STK8BA58_RESOLUTION_12_MASK));
+			*accel_x = *accel_x >> STK8BA58_SHIFT_FOUR_BITS;
 	}
 	return com_rslt;
 }
 
 STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_read_accel_y(int16_t *accel_y)
 {
-
+	/*  Variable used to return value of
+	communication routine*/
+	STK8BA58_RETURN_FUNCTION_TYPE com_rslt = ERROR;
+	/* Array holding the accel x value
+							    | 7 | 6 | 5 | 4 | 3 | 2 | 1 |   0   |
+		data[0] - y->LSB		|   YOUT[3:0]   |  reverse  | NEW_Y |
+		data[1] - y->MSB		|		      YOUT[11:4]		    |
+	*/
+	uint8_t	data[STK8BA58_ACCEL_DATA_SIZE] = {0};
+	if (p_stk8ba58 == STK8BA58_NULL) 
+	{
+		/* Check the struct p_stk8ba58 is empty */
+		return E_STK8BA58_NULL_PTR;
+	} 
+    else 
+    {
+		/* This case used for the resolution bit 12*/
+			com_rslt = p_stk8ba58->STK8BA58_BUS_READ_FUNC
+				(p_stk8ba58->dev_addr, STK8BA58_ACCEL_Y_LSB_REG, data, STK8BA58_LSB_MSB_READ_LENGTH);
+			*accel_y = (int16_t)(
+				(((int32_t)((int8_t)data[STK8BA58_SENSOR_DATA_ACCEL_MSB])) << STK8BA58_SHIFT_EIGHT_BITS) 
+				| (data[STK8BA58_SENSOR_DATA_ACCEL_LSB] & STK8BA58_RESOLUTION_12_MASK));
+			*accel_y = *accel_y >> STK8BA58_SHIFT_FOUR_BITS;
+	}
+	return com_rslt;
 }
 
 STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_read_accel_z(int16_t *accel_z)
 {
-
+	/*  Variable used to return value of
+	communication routine*/
+	STK8BA58_RETURN_FUNCTION_TYPE com_rslt = ERROR;
+	/* Array holding the accel x value
+							    | 7 | 6 | 5 | 4 | 3 | 2 | 1 |   0   |
+		data[0] - z->LSB		|   ZOUT[3:0]   |  reverse  | NEW_Z |
+		data[1] - z->MSB		|		      ZOUT[11:4]		    |
+	*/
+	uint8_t	data[STK8BA58_ACCEL_DATA_SIZE] = {0};
+	if (p_stk8ba58 == STK8BA58_NULL) 
+	{
+		/* Check the struct p_stk8ba58 is empty */
+		return E_STK8BA58_NULL_PTR;
+	} 
+    else 
+    {
+		/* This case used for the resolution bit 12*/
+			com_rslt = p_stk8ba58->STK8BA58_BUS_READ_FUNC
+				(p_stk8ba58->dev_addr, STK8BA58_ACCEL_Z_LSB_REG, data, STK8BA58_LSB_MSB_READ_LENGTH);
+			*accel_z = (int16_t)(
+				(((int32_t)((int8_t)data[STK8BA58_SENSOR_DATA_ACCEL_MSB])) << STK8BA58_SHIFT_EIGHT_BITS) 
+				| (data[STK8BA58_SENSOR_DATA_ACCEL_LSB] & STK8BA58_RESOLUTION_12_MASK));
+			*accel_z = *accel_z >> STK8BA58_SHIFT_FOUR_BITS;
+	}
+	return com_rslt;
 }
 
 STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_read_accel_xyz(struct stk8ba58_accel_data *accel)
 {
+	STK8BA58_RETURN_FUNCTION_TYPE com_rslt = ERROR;
+	/* Array holding the accel x value
+							    | 7 | 6 | 5 | 4 | 3 | 2 | 1 |   0   |
+		                        --------------------------------------						
+		data[0] - x->LSB		|   XOUT[3:0]   |  reverse  | NEW_X |
+		data[1] - x->MSB		|		      XOUT[11:4]		    |
+		data[2] - y->LSB		|   YOUT[3:0]   |  reverse  | NEW_Y |
+		data[3] - y->MSB		|		      YOUT[11:4]		    |
+		data[4] - z->LSB		|   ZOUT[3:0]   |  reverse  | NEW_Z |
+		data[5] - z->MSB		|		      ZOUT[11:4]		    |
 
+	*/
+	uint8_t data[STK8BA58_ACCEL_XYZ_DATA_SIZE] = {
+	STK8BA58_INIT_VALUE, STK8BA58_INIT_VALUE,
+	STK8BA58_INIT_VALUE, STK8BA58_INIT_VALUE,
+	STK8BA58_INIT_VALUE, STK8BA58_INIT_VALUE};
+
+	if (p_stk8ba58 == STK8BA58_NULL) {
+		/* Check the struct p_STK8BA58 is empty */
+		return E_STK8BA58_NULL_PTR;
+	} 
+	else
+	{
+		/* read the x & y & z data[6]*/
+		com_rslt = p_stk8ba58->STK8BA58_BUS_READ_FUNC
+		(p_stk8ba58->dev_addr, STK8BA58_ACCEL_X_LSB_REG,
+		data, STK8BA58_SHIFT_SIX_BITS);
+		/* read the x data*/
+		accel->x = (int16_t)((((int32_t)((int8_t)
+		data[STK8BA58_SENSOR_DATA_XYZ_X_MSB]))
+		<< STK8BA58_SHIFT_EIGHT_BITS) |
+		(data[STK8BA58_SENSOR_DATA_XYZ_X_LSB] &
+		STK8BA58_RESOLUTION_12_MASK));
+		accel->x = accel->x >> STK8BA58_SHIFT_FOUR_BITS;
+
+		/* read the y data*/
+		accel->y = (int16_t)((((int32_t)((int8_t)
+		data[STK8BA58_SENSOR_DATA_XYZ_Y_MSB]))
+		<< STK8BA58_SHIFT_EIGHT_BITS) |
+		(data[STK8BA58_SENSOR_DATA_XYZ_Y_LSB] &
+		STK8BA58_RESOLUTION_12_MASK));
+		accel->y = accel->y >> STK8BA58_SHIFT_FOUR_BITS;
+
+		/* read the z data*/
+		accel->z = (int16_t)((((int32_t)((int8_t)
+		data[STK8BA58_SENSOR_DATA_XYZ_Z_MSB]))
+		<< STK8BA58_SHIFT_EIGHT_BITS) |
+		(data[STK8BA58_SENSOR_DATA_XYZ_Z_LSB] &
+		STK8BA58_RESOLUTION_12_MASK));
+		accel->z = accel->z >> STK8BA58_SHIFT_FOUR_BITS;
+	}	
+	return com_rslt;
 }
+
+STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_get_range(uint8_t *range)
+{
+	/*  Variable used to return value of
+	communication routine*/
+	STK8BA58_RETURN_FUNCTION_TYPE com_rslt = ERROR;
+	uint8_t data = STK8BA58_INIT_VALUE;
+
+	if (p_stk8ba58 == STK8BA58_NULL)
+	{
+		/* Check the struct p_STK8BA58 is empty */
+		return E_STK8BA58_NULL_PTR;
+	} 
+	else 
+	{
+		/* Read the range register 0x0F*/
+		com_rslt = p_stk8ba58->STK8BA58_BUS_READ_FUNC(p_stk8ba58->dev_addr,
+		STK8BA58_RANGE_SELECT_ADDR, &data,
+		STK8BA58_GEN_READ_WRITE_LENGTH);
+		data = STK8BA58_GET_BITSLICE(data, STK8BA58_RANGE_SELECT);
+		*range = data;
+	}
+	return com_rslt;
+}
+
+STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_set_range(uint8_t range)
+{
+	/*  Variable used to return value of
+	communication routine*/
+	STK8BA58_RETURN_FUNCTION_TYPE com_rslt = ERROR;
+	uint8_t data = STK8BA58_INIT_VALUE;
+
+	if (p_stk8ba58 == STK8BA58_NULL) {
+		/* Check the struct p_STK8BA58 is empty */
+		return E_STK8BA58_NULL_PTR;
+		} else {
+		if ((range == STK8BA58_RANGE_2G) ||
+		(range == STK8BA58_RANGE_4G) ||
+		(range == STK8BA58_RANGE_8G))
+		{
+			com_rslt = p_stk8ba58->STK8BA58_BUS_READ_FUNC
+			(p_stk8ba58->dev_addr,
+			STK8BA58_RANGE_SELECT_ADDR, &data,
+			STK8BA58_GEN_READ_WRITE_LENGTH);
+			switch (range) {
+			case STK8BA58_RANGE_2G:
+				data  = STK8BA58_SET_BITSLICE(data,
+				STK8BA58_RANGE_SELECT,
+				STK8BA58_RANGE_2G);
+			break;
+			case STK8BA58_RANGE_4G:
+				data  = STK8BA58_SET_BITSLICE(data,
+				STK8BA58_RANGE_SELECT,
+				STK8BA58_RANGE_4G);
+			break;
+			case STK8BA58_RANGE_8G:
+				data  = STK8BA58_SET_BITSLICE(data,
+				STK8BA58_RANGE_SELECT,
+				STK8BA58_RANGE_8G);
+			break;
+			default:
+			break;
+			}
+			/* Write the range register 0x0F*/
+			com_rslt += stk8ba58_write_reg(STK8BA58_RANGE_SELECT_ADDR,
+				&data, STK8BA58_GEN_READ_WRITE_LENGTH);
+		} 
+		else 
+		{
+			com_rslt = E_OUT_OF_RANGE;
+		}
+	}
+	return com_rslt;
+}
+
+STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_get_bw(uint8_t *bw)
+{
+	/*  Variable used to return value of
+	communication routine*/
+	STK8BA58_RETURN_FUNCTION_TYPE com_rslt = ERROR;
+	uint8_t data = STK8BA58_INIT_VALUE;
+
+	if (p_stk8ba58 == STK8BA58_NULL) {
+		/* Check the struct p_stk8ba58 is empty */
+		return E_STK8BA58_NULL_PTR;
+		} else {
+			/* Read the bandwidth register 0x10*/
+			com_rslt = p_stk8ba58->STK8BA58_BUS_READ_FUNC
+			(p_stk8ba58->dev_addr,
+			STK8BA58_BWSEL_ADDR, &data,
+			STK8BA58_GEN_READ_WRITE_LENGTH);
+			data = STK8BA58_GET_BITSLICE(data, STK8BA58_BWSEL);
+			*bw = data;
+		}
+	return com_rslt;	
+}
+
+STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_set_bw(uint8_t bw)
+{
+	/*  Variable used to return value of
+	communication routine*/
+	STK8BA58_RETURN_FUNCTION_TYPE com_rslt = ERROR;
+	uint8_t data = STK8BA58_INIT_VALUE;
+	uint8_t data_bw = STK8BA58_INIT_VALUE;
+	if (p_stk8ba58 == STK8BA58_NULL)
+	{
+			/* Check the struct p_stk8ba58 is empty */
+			com_rslt = E_STK8BA58_NULL_PTR;
+	} 
+	else 
+	{
+		/* Check the chip id 0xFB, it support upto 500Hz*/
+		if (p_stk8ba58->chip_id == 0xFB) 
+		{
+			if (bw > 7 && bw < 15)
+			{
+				switch (bw) {
+				case STK8BA58_BW_7_81HZ:
+					data_bw = STK8BA58_BW_7_81HZ;
+
+					/*  7.81 Hz      64000 uS   */
+				break;
+				case STK8BA58_BW_15_63HZ:
+					data_bw = STK8BA58_BW_15_63HZ;
+
+				/*  15.63 Hz     32000 uS   */
+				break;
+				case STK8BA58_BW_31_25HZ:
+					data_bw = STK8BA58_BW_31_25HZ;
+
+				/*  31.25 Hz     16000 uS   */
+				break;
+				case STK8BA58_BW_62_50HZ:
+					data_bw = STK8BA58_BW_62_50HZ;
+
+				/*  62.50 Hz     8000 uS   */
+				break;
+				case STK8BA58_BW_125HZ:
+					data_bw = STK8BA58_BW_125HZ;
+
+				/*  125 Hz       4000 uS   */
+				break;
+				case STK8BA58_BW_250HZ:
+					data_bw = STK8BA58_BW_250HZ;
+
+				/*  250 Hz       2000 uS   */
+				break;
+				case STK8BA58_BW_500HZ:
+					data_bw = STK8BA58_BW_500HZ;
+
+				/*  500 Hz       1000 uS   */
+				break;
+				default:
+				break;
+				}
+				/* Write the bandwidth register */
+				com_rslt = p_stk8ba58->STK8BA58_BUS_READ_FUNC
+				(p_stk8ba58->dev_addr, STK8BA58_BWSEL_ADDR, &data, STK8BA58_GEN_READ_WRITE_LENGTH);
+				data = STK8BA58_SET_BITSLICE(data, STK8BA58_BWSEL, data_bw);
+				com_rslt += stk8ba58_write_reg(STK8BA58_BWSEL_ADDR, &data, STK8BA58_GEN_READ_WRITE_LENGTH);
+			} 
+			else 
+			{
+				com_rslt = E_OUT_OF_RANGE;
+			}
+		} 
+		else 
+		{
+			if (bw > 7 && bw < 16) 
+			{
+				switch (bw) 
+				{
+					case STK8BA58_BW_7_81HZ:
+						data_bw = STK8BA58_BW_7_81HZ;
+
+					/*  7.81 Hz      64000 uS   */
+					break;
+					case STK8BA58_BW_15_63HZ:
+						data_bw = STK8BA58_BW_15_63HZ;
+
+					/*  15.63 Hz     32000 uS   */
+					break;
+					case STK8BA58_BW_31_25HZ:
+						data_bw = STK8BA58_BW_31_25HZ;
+
+					/*  31.25 Hz     16000 uS   */
+					break;
+					case STK8BA58_BW_62_50HZ:
+						data_bw = STK8BA58_BW_62_50HZ;
+
+					/*  62.50 Hz     8000 uS   */
+					break;
+					case STK8BA58_BW_125HZ:
+						data_bw = STK8BA58_BW_125HZ;
+
+					/*  125 Hz       4000 uS   */
+					break;
+					case STK8BA58_BW_250HZ:
+						data_bw = STK8BA58_BW_250HZ;
+
+					/*  250 Hz       2000 uS   */
+					break;
+					case STK8BA58_BW_500HZ:
+						data_bw = STK8BA58_BW_500HZ;
+
+					/*!  500 Hz       1000 uS   */
+					break;
+					case STK8BA58_BW_1000HZ:
+						data_bw = STK8BA58_BW_1000HZ;
+
+					/*  1000 Hz      500 uS   */
+					break;
+					default:
+					break;
+				}
+				/* Write the bandwidth register */
+				com_rslt = p_stk8ba58->STK8BA58_BUS_READ_FUNC
+				(p_stk8ba58->dev_addr, STK8BA58_BWSEL_ADDR, &data, STK8BA58_GEN_READ_WRITE_LENGTH);
+				data = STK8BA58_SET_BITSLICE(data, STK8BA58_BWSEL, data_bw);
+				com_rslt += stk8ba58_write_reg(STK8BA58_BWSEL_ADDR, &data, STK8BA58_GEN_READ_WRITE_LENGTH);
+			} 
+			else 
+			{
+				com_rslt = E_OUT_OF_RANGE;
+			}
+		}
+	}
+	return com_rslt;
+}
+
+// STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_get_power_mode(uint8_t *power_mode)
+// {
+// 	/*  Variable used to return value of
+// 	communication routine*/
+// 	STK8BA58_RETURN_FUNCTION_TYPE com_rslt = ERROR;
+// 	uint8_t data = STK8BA58_INIT_VALUE;
+// 	if (p_stk8ba58 == STK8BA58_NULL)
+// 	{
+// 	/* Check the struct p_stk8ba58 is empty */
+// 		com_rslt = E_STK8BA58_NULL_PTR;
+// 	}
+// 	else
+// 	{
+// 		com_rslt = p_stk8ba58->STK8BA58_BUS_READ_FUNC
+// 		(p_stk8ba58->dev_addr, STK8BA58_MODE_CTRL_REG,
+// 		&data, STK8BA58_GEN_READ_WRITE_LENGTH);
+
+// 		data  = (data &
+// 		STK8BA58_POWER_MODE_HEX_E_ZERO_MASK) >>
+// 		STK8BA58_SHIFT_FIVE_BITS;
+
+// 		if ((data == STK8BA58_POWER_MODE_HEX_ZERO_ZERO_MASK) &&
+// 		(data2 == STK8BA58_POWER_MODE_HEX_ZERO_ZERO_MASK))
+// 		{
+// 			*power_mode  = STK8BA58_MODE_NORMAL;
+// 		}
+// 		else
+// 		{
+// 			if ((data == STK8BA58_POWER_MODE_HEX_ZERO_TWO_MASK) &&
+// 			(data2 == STK8BA58_POWER_MODE_HEX_ZERO_ZERO_MASK))
+// 			{
+// 				*power_mode  = STK8BA58_MODE_LOWPOWER1;
+// 			}
+// 			else
+// 			{
+// 				if ((data == STK8BA58_POWER_MODE_HEX_ZERO_FOUR_MASK
+// 				|| data == STK8BA58_POWER_MODE_HEX_ZERO_SIX_MASK) &&
+// 				(data2 == STK8BA58_POWER_MODE_HEX_ZERO_ZERO_MASK))
+// 				{
+// 					*power_mode  = STK8BA58_MODE_SUSPEND;
+// 				}
+// 				else
+// 				{
+// 					if (((data & STK8BA58_POWER_MODE_HEX_ZERO_ONE_MASK)
+// 					== STK8BA58_POWER_MODE_HEX_ZERO_ONE_MASK))
+// 					{
+// 						*power_mode  = STK8BA58_MODE_DEEP_SUSPEND;
+// 					}
+// 					else
+// 					{
+// 						if ((data == STK8BA58_POWER_MODE_HEX_ZERO_TWO_MASK)
+// 						&& (data2 == STK8BA58_POWER_MODE_HEX_ZERO_ONE_MASK))
+// 						{
+// 							*power_mode  = STK8BA58_MODE_LOWPOWER2;
+// 						} 
+// 						else
+// 						{
+// 							if ((data == STK8BA58_POWER_MODE_HEX_ZERO_FOUR_MASK) &&
+// 							(data2 == STK8BA58_POWER_MODE_HEX_ZERO_ONE_MASK))
+// 								*power_mode  = STK8BA58_MODE_STANDBY;
+// 							else
+// 								*power_mode = STK8BA58_MODE_DEEP_SUSPEND;
+// 						}
+// 					}
+// 				}
+// 			}
+// 		}
+// 	}
+// 	p_stk8ba58->power_mode = *power_mode;
+// return com_rslt;
+// }
+
+// STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_set_power_mode(uint8_t power_mode)
+// {
+// 		/*  Variable used to return value of
+// 	communication routine*/
+// 	STK8BA58_RETURN_FUNCTION_TYPE com_rslt = ERROR;
+// 	uint8_t mode_ctr_eleven_reg = STK8BA58_INIT_VALUE;
+// 	uint8_t mode_ctr_twel_reg = STK8BA58_INIT_VALUE;
+// 	uint8_t data = STK8BA58_INIT_VALUE;
+// 	uint8_t data2 = STK8BA58_INIT_VALUE;
+// 	uint8_t pre_fifo_config_data = STK8BA58_INIT_VALUE;
+
+// 	if (p_stk8ba58 == STK8BA58_NULL) {
+// 		/* Check the struct p_stk8ba58 is empty */
+// 		com_rslt = E_STK8BA58_NULL_PTR;
+// 	} else {
+// 		com_rslt = p_stk8ba58->STK8BA58_BUS_READ_FUNC(p_stk8ba58->dev_addr,
+// 			STK8BA58_MODE_CTRL_REG, &data, 1);
+// 		com_rslt += p_stk8ba58->STK8BA58_BUS_READ_FUNC(p_stk8ba58->dev_addr,
+// 			STK8BA58_LOW_POWER_MODE_REG, &data2, 1);
+
+// 		/* write the previous FIFO mode and data select*/
+// 		pre_fifo_config_data = p_stk8ba58->fifo_config;
+// 		pre_fifo_config_data |= 0x0C;
+
+// 		com_rslt += bma2x2_set_mode_value(power_mode);
+// 		mode_ctr_eleven_reg = p_stk8ba58->ctrl_mode_reg;
+// 		mode_ctr_twel_reg =  p_stk8ba58->low_mode_reg;
+
+// 		/* write the power mode to the register 0x12*/
+// 		data2  = STK8BA58_SET_BITSLICE(data2, STK8BA58_LOW_POWER_MODE,
+// 					mode_ctr_twel_reg);
+// 		com_rslt += bma2x2_write_reg(STK8BA58_LOW_POWER_MODE_REG,
+// 					&data2, 1);
+
+// 		/*A minimum delay of atleast 450us is required for
+// 		the low power modes, as per the data sheet.*/
+// 		p_stk8ba58->delay_msec(STK8BA58_INTERFACE_IDLE_TIME_DELAY);
+
+// 		if (((p_stk8ba58->power_mode == STK8BA58_MODE_LOWPOWER1) ||
+// 			(p_stk8ba58->power_mode == STK8BA58_MODE_LOWPOWER2)) &&
+// 				(power_mode == STK8BA58_MODE_NORMAL)) {
+// 				/* Enter the power mode to suspend*/
+// 				data  = STK8BA58_SET_BITSLICE(data,
+// 				STK8BA58_MODE_CTRL, STK8BA58_SHIFT_FOUR_BITS);
+// 				/* write the power mode to suspend*/
+// 				com_rslt += bma2x2_write_reg(
+// 				STK8BA58_MODE_CTRL_REG, &data,
+// 				STK8BA58_GEN_READ_WRITE_LENGTH);
+// 				/*re-write FIFO_CONFIG_0 register*/
+// 				com_rslt += bma2x2_write_reg(
+// 				STK8BA58_FIFO_MODE_REG, &pre_fifo_config_data, 1);
+// 			}
+
+// 		/* write the power mode to 0x11 register*/
+// 		data  = STK8BA58_SET_BITSLICE(data, STK8BA58_MODE_CTRL,
+// 			mode_ctr_eleven_reg);
+// 		com_rslt += bma2x2_write_reg(STK8BA58_MODE_CTRL_REG, &data, 1);
+// 		/*A minimum delay of atleast 450us is required for
+// 		the low power modes, as per the data sheet.*/
+// 		p_stk8ba58->delay_msec(STK8BA58_INTERFACE_IDLE_TIME_DELAY);
+
+// 		com_rslt += bma2x2_write_reg(STK8BA58_FIFO_MODE_REG,
+// 		&pre_fifo_config_data, 1);
+
+// 		/*Assigning the power mode to the global variable*/
+// 		p_stk8ba58->power_mode = power_mode;
+// 	}
+// 	return com_rslt;
+// }
