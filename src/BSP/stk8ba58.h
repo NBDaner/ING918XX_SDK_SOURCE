@@ -1,7 +1,6 @@
 #ifndef _STK8BA58_H_
 #define _STK8BA58_H_
 
-//文件引用
 #include "stdint.h"
 
 /*
@@ -111,12 +110,10 @@ struct stk8ba58_t
     STK8BA58_WR_FUNC_PTR;
 	STK8BA58_RD_FUNC_PTR;
 	STK8BA58_BRD_FUNC_PTR;
-	// void (*delay_msec)(STK8BA58_MDELAY_DATA_TYPE);
 };
 
 /**
  * @brief Bit shift and width for STK8BA58 register.
- * 
  */
 #define bsSTK8BA58_CHIP_ID                  (0)
 #define bwSTK8BA58_CHIP_ID                  (8)
@@ -132,56 +129,33 @@ struct stk8ba58_t
 #define bwSTK8BA58_SIG_MOT_INTR_STS         (1)
 #define bsSTK8BA58_NEW_DATA_INTR_STS        (7)
 #define bwSTK8BA58_NEW_DATA_INTR_STS        (1)
-
-#define bsSTK8BA58_RANGE_SELECT            (0)
-#define bwSTK8BA58_RANGE_SELECT            (4)
-
-#define bsSTK8BA58_BWSEL             (0)
-#define bwSTK8BA58_BWSEL            (5)
+#define bsSTK8BA58_RANGE_SELECT             (0)
+#define bwSTK8BA58_RANGE_SELECT             (4)
+#define bsSTK8BA58_BWSEL                    (0)
+#define bwSTK8BA58_BWSEL                    (5)
 
 
 /**
  * @brief Bit mask for STK8BA58 register.
- * 
  */
 #define bmSTK8BA58_CHIP_ID                  (0xFF)
 #define bmSTK8BA58_NEW_DATA                 (0x01)
 #define bmSTK8BA58_ACCEL_DATA_LSB           (0xF0)
 #define bmSTK8BA58_ACCEL_DATA_MSB           (0xFF)
-
 #define bmSTK8BA58_RANGE_SELECT             (0x0F)
+#define bmSTK8BA58_BWSEL                    (0x1F)
+#define STK8BA58_RESOLUTION_12_MASK		    (0xF0)
 
 
-#define bmSTK8BA58_BWSEL             (0x1F)
-
-
-
-
-#define STK8BA58_MODE_NORMAL         (0)
-#define STK8BA58_MODE_LOW_POWER     (1)
-#define STK8BA58_MODE_SUSPEND       (2)
-#define STK8BA58_MODE_POWER_OFF     (3)
-
-/******************************************/
-/**\name         AXIS SELECTION           */
-/******************************************/
-#define STK8BA58_X_AXIS           (0)
-#define STK8BA58_Y_AXIS           (1)
-#define STK8BA58_Z_AXIS           (2)
-
-
-
-#define STK8BA58_RESOLUTION_12_MASK		(0xF0)
-
-/****************************************************/
-/**\name  BITSLICE FUNCTIONS      */
-/***************************************************/
+/**
+ * @brief Bislice function definition.
+ */
 #define STK8BA58_GET_BITSLICE(regvar, bitname)\
 ((regvar & bm##bitname) >> bs##bitname)
 
-
 #define STK8BA58_SET_BITSLICE(regvar, bitname, val)\
 ((regvar & ~bm##bitname) | ((val<<bs##bitname)&bm##bitname))
+
 
 typedef enum
 {
@@ -192,14 +166,14 @@ typedef enum
 
 typedef enum
 {
-    STK8BA58_BW_7_81HZ  = 0x08,
-    STK8BA58_BW_15_63HZ = 0x09,
-    STK8BA58_BW_31_25HZ = 0x0A,
-    STK8BA58_BW_62_50HZ = 0x0B,
-    STK8BA58_BW_125HZ   = 0x0C,
-    STK8BA58_BW_250HZ   = 0x0D,
-    STK8BA58_BW_500HZ   = 0x0E,
-    STK8BA58_BW_1000HZ  = 0x0F,
+    STK8BA58_BW_7_81HZ  = 0x08,	// 7.81 Hz   64000 uS
+    STK8BA58_BW_15_63HZ = 0x09, // 15.63 Hz   32000 uS
+    STK8BA58_BW_31_25HZ = 0x0A, // 31.25 Hz   16000 uS
+    STK8BA58_BW_62_50HZ = 0x0B, // 62.50 Hz   8000 uS
+    STK8BA58_BW_125HZ   = 0x0C, // 125 Hz   4000 uS
+    STK8BA58_BW_250HZ   = 0x0D, // 250 Hz   2000 uS
+    STK8BA58_BW_500HZ   = 0x0E, // 500 Hz   1000 uS
+    STK8BA58_BW_1000HZ  = 0x0F, // 1000 Hz   500 uS
 }stk8ba58_bw_sel;
 
 typedef enum
@@ -237,69 +211,26 @@ typedef enum
     STK8BA58_LATCH_INT_LATCH1       = 0x0F,
 }stk8ba58_int_latch;
 
-
-
-/*********************************************************************/
-/**\name REGISTER BIT MASK, BIT LENGTH, BIT POSITION DEFINITIONS  */
-/********************************************************************/
-/******************************/
-/**\name CHIP ID  */
-/******************************/
-
-
-/******************************/
-/**\name DATA REGISTER-X  */
-/******************************/
-#define STK8BA58_NEW_DATA_X_REG             STK8BA58_X_OUT_LSB_ADDR
-#define STK8BA58_ACCEL_X_LSB_REG           STK8BA58_X_OUT_LSB_ADDR
-#define STK8BA58_ACCEL_X_MSB_REG            STK8BA58_X_OUT_MSB_ADDR
-/******************************/
-/**\name DATA REGISTER-Y  */
-/******************************/
-#define STK8BA58_NEW_DATA_Y_REG             STK8BA58_Y_OUT_LSB_ADDR
-#define STK8BA58_ACCEL_Y_LSB_REG           STK8BA58_Y_OUT_LSB_ADDR
-#define STK8BA58_ACCEL_Y_MSB_REG            STK8BA58_Y_OUT_MSB_ADDR
-/******************************/
-/**\name DATA REGISTER-Z  */
-/******************************/
-#define STK8BA58_NEW_DATA_Z_REG             STK8BA58_Z_OUT_LSB_ADDR
-#define STK8BA58_ACCEL_Z_LSB_REG           STK8BA58_Z_OUT_LSB_ADDR
-#define STK8BA58_ACCEL_Z_MSB_REG            STK8BA58_Z_OUT_MSB_ADDR
-
-/****************************************************/
-/**\name	ARRAY SIZE DEFINITIONS      */
-/***************************************************/
-#define STK8BA58_ACCEL_DATA_SIZE			(2)
-#define STK8BA58_ACCEL_XYZ_DATA_SIZE		(6)
-
-/**************************************************************/
-/**\name	            RETURN TYPE DEFINITION                */
-/**************************************************************/
-
-
-/****************************************************/
-/**\name	ARRAY PARAMETERS      */
-/***************************************************/
-
+/**
+ * @brief Array parameters.
+ */
 #define STK8BA58_SENSOR_DATA_ACCEL_LSB	(0)
 #define STK8BA58_SENSOR_DATA_ACCEL_MSB	(1)
-
 #define STK8BA58_SENSOR_DATA_XYZ_X_LSB	(0)
 #define STK8BA58_SENSOR_DATA_XYZ_X_MSB	(1)
 #define STK8BA58_SENSOR_DATA_XYZ_Y_LSB	(2)
 #define STK8BA58_SENSOR_DATA_XYZ_Y_MSB	(3)
 #define STK8BA58_SENSOR_DATA_XYZ_Z_LSB	(4)
 #define STK8BA58_SENSOR_DATA_XYZ_Z_MSB	(5)
-/**************************************************************/
-/**\name             FUNCTION DECLARATION                     */
-/**************************************************************/
+
+
+/**
+ * @brief Function declaration.
+ */
 STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_init(struct stk8ba58_t *stk8ba58);
 STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_write_reg(uint8_t addr, uint8_t *data, uint8_t len);
 STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_read_reg(uint8_t addr, uint8_t *data, uint8_t len);
 
-STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_read_accel_x(int16_t *accel_x);
-STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_read_accel_y(int16_t *accel_y);
-STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_read_accel_z(int16_t *accel_z);
 STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_read_accel_xyz(struct stk8ba58_accel_data *accel);
 
 STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_get_range(uint8_t *range);
@@ -307,25 +238,5 @@ STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_set_range(uint8_t range);
 
 STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_get_bw(uint8_t *bw);
 STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_set_bw(uint8_t bw);
-
-STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_get_power_mode(uint8_t *power_mode);
-STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_set_power_mode(uint8_t power_mode);
-
-STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_get_sleep_durn(void);
-STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_set_sleep_durn(void);
-
-STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_get_offset(void);
-STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_set_offset(void);
-
-STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_get_protect_dis(void);
-STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_set_protect_dis(void);
-
-STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_get_whether_filtered(void);
-STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_set_whether_filtered(void);
-
-STK8BA58_RETURN_FUNCTION_TYPE stk8ba58_soft_rst(void);
-
-
-
 
 #endif  //_STK8BA58_H_
