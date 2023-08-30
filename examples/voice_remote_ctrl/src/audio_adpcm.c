@@ -1,5 +1,6 @@
 #include "audio_adpcm.h"
 #include <string.h>
+#include <stdio.h>
 
 const int8_t indexTable[16] = { -1, -1, -1, -1, 2, 4, 6, 8, /* Table of index changes */
                                 -1, -1, -1, -1, 2, 4, 6, 8 };
@@ -57,9 +58,11 @@ void adpcm_encode(adpcm_enc_t *adpcm, pcm_sample_t *input, int input_size, void 
 {
     pcm_sample_t *sample = input;
     int i;
-
+    
+    printf("Raw Data-> ");
     for (i = 0; i < input_size; i++)
     {
+        printf("%d ",sample[i]);
         int32_t diff = (int32_t)sample[i] - adpcm->state.predicated;
         uint8_t new_sample = 0;
         uint8_t mask = 4;
@@ -97,6 +100,7 @@ void adpcm_encode(adpcm_enc_t *adpcm, pcm_sample_t *input, int input_size, void 
 
         adpcm_update(&adpcm->state, new_sample);       
     }
+    printf("\n");
 
 }
 

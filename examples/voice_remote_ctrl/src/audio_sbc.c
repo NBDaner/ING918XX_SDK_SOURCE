@@ -768,6 +768,21 @@ void sbc_encode(sbc_t *sbc,
 		priv->frame.length = sbc_get_frame_length(sbc);
 		sbc_encoder_init(&priv->enc_state, &priv->frame);
 		priv->init = true;
+
+		platform_printf("[CODEC INIT INFO] ");
+		platform_printf("Freq=%s  ",priv->frame.frequency == SBC_FREQ_16000? "16KHz":
+											priv->frame.frequency == SBC_FREQ_32000 ? "32KHz": 
+												priv->frame.frequency == SBC_FREQ_44100 ? "44.1KHz": 
+													priv->frame.frequency == SBC_FREQ_48000 ? "48KHZ" : "Unkown");
+		platform_printf("Mode=%s  ",priv->frame.mode == SBC_MODE_MONO? "MONO":
+										priv->frame.mode == SBC_MODE_DUAL_CHANNEL ? "DUAL": 
+											priv->frame.mode == SBC_MODE_STEREO ? "STERO": 
+												priv->frame.mode == SBC_MODE_JOINT_STEREO ? "JOINT STERO" : "Unkown");
+		platform_printf("Allocation=%s  ",priv->frame.allocation == SBC_AM_LOUDNESS ? "LOUDNESS":
+											priv->frame.allocation == SBC_AM_SNR ? "SNR": "Unkown");													
+		platform_printf("Channels=%d  Subbands=%d  Blocks=%d  ",priv->frame.channels,priv->frame.subbands,priv->frame.blocks);
+		platform_printf("Bitpool=%d  ",priv->frame.bitpool);
+		platform_printf("CodeSize=%d  FrameLen=%d\n",priv->frame.codesize,priv->frame.length);
 	}
 	else if (priv->frame.bitpool != sbc->bitpool)
 	{
