@@ -621,7 +621,7 @@ static void sbc_set_defaults(sbc_t *sbc, uint8_t flags)
 	sbc->subbands = SBC_SB_4;
 	sbc->blocks = SBC_BLK_16;
     sbc->allocation = SBC_AM_SNR;
-	sbc->bitpool = 9;
+	sbc->bitpool = 32;
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 	sbc->endian = SBC_LE;
 #elif __BYTE_ORDER == __BIG_ENDIAN
@@ -769,6 +769,8 @@ void sbc_encode(sbc_t *sbc,
 		sbc_encoder_init(&priv->enc_state, &priv->frame);
 		priv->init = true;
 
+#if defined(DEBUG_INFO)
+		//Reveal codec initial information.
 		platform_printf("[CODEC INIT INFO] ");
 		platform_printf("Freq=%s  ",priv->frame.frequency == SBC_FREQ_16000? "16KHz":
 											priv->frame.frequency == SBC_FREQ_32000 ? "32KHz": 
@@ -783,6 +785,7 @@ void sbc_encode(sbc_t *sbc,
 		platform_printf("Channels=%d  Subbands=%d  Blocks=%d  ",priv->frame.channels,priv->frame.subbands,priv->frame.blocks);
 		platform_printf("Bitpool=%d  ",priv->frame.bitpool);
 		platform_printf("CodeSize=%d  FrameLen=%d\n",priv->frame.codesize,priv->frame.length);
+#endif
 	}
 	else if (priv->frame.bitpool != sbc->bitpool)
 	{
@@ -1045,32 +1048,32 @@ static void __sbc_analyze_eight(const int32_t *in, int32_t *out)
 		                 MULA(-_sbc_proto_8[17], in[61],
 		                 MUL( -_sbc_proto_8[16], in[77])))))))))));
 
-		s[0] = MUL(_anamatrix8[7],t[4]);
-		s[1] = MUL(_anamatrix8[6],t[0]);
-        s[2] = MUL(_anamatrix8[0],t[2]);  // 0 2
-		s[3] = MUL(_anamatrix8[1],t[6]);  // 1 6
-		s[8] = MUL(_anamatrix8[1],t[2]); //  1 2
-		s[9] = MUL(_anamatrix8[0],t[6]); // 0 6
+	s[0] = MUL(_anamatrix8[7],t[4]);
+	s[1] = MUL(_anamatrix8[6],t[0]);
+	s[2] = MUL(_anamatrix8[0],t[2]);  // 0 2
+	s[3] = MUL(_anamatrix8[1],t[6]);  // 1 6
+	s[8] = MUL(_anamatrix8[1],t[2]); //  1 2
+	s[9] = MUL(_anamatrix8[0],t[6]); // 0 6
 
-		s[4] = MULA( _anamatrix8[2], t[3], MULA( _anamatrix8[3], t[1],
-		            					   MULA( _anamatrix8[4], t[5],
-		            					   MUL(  _anamatrix8[5], t[7]))));
-		s[5] = MULA(-_anamatrix8[2], t[5], MULA( _anamatrix8[3], t[3],
-		            					   MULA(-_anamatrix8[4], t[7],
-		            					   MUL( -_anamatrix8[5], t[1]))));
-		s[6] = MULA( _anamatrix8[4], t[3], MULA( -_anamatrix8[2], t[1],
-		            					   MULA( _anamatrix8[5], t[5],
-		            					   MUL(  _anamatrix8[3], t[7]))));
-		s[7] = MULA(-_anamatrix8[2], t[7], MULA( _anamatrix8[3], t[5],
-		            					   MULA(-_anamatrix8[4], t[1],
-		            					   MUL(  _anamatrix8[5], t[3]))));
+	s[4] = MULA( _anamatrix8[2], t[3], MULA( _anamatrix8[3], t[1],
+										MULA( _anamatrix8[4], t[5],
+										MUL(  _anamatrix8[5], t[7]))));
+	s[5] = MULA(-_anamatrix8[2], t[5], MULA( _anamatrix8[3], t[3],
+										MULA(-_anamatrix8[4], t[7],
+										MUL( -_anamatrix8[5], t[1]))));
+	s[6] = MULA( _anamatrix8[4], t[3], MULA( -_anamatrix8[2], t[1],
+										MULA( _anamatrix8[5], t[5],
+										MUL(  _anamatrix8[3], t[7]))));
+	s[7] = MULA(-_anamatrix8[2], t[7], MULA( _anamatrix8[3], t[5],
+										MULA(-_anamatrix8[4], t[1],
+										MUL(  _anamatrix8[5], t[3]))));
 
-		out[0] = SCALE8_STAGE2( (s[0] + s[1]) + (s[2] + s[3]) + s[4]);
-		out[1] = SCALE8_STAGE2( (s[0] - s[1]) + (s[8] - s[9]) + s[5]);
-        out[2] = SCALE8_STAGE2( (s[0] - s[1]) - s[8] + (s[9] + s[6]));
-        out[3] = SCALE8_STAGE2( (s[0] + s[1]) - (s[2] + s[3]) + s[7]);
-        out[4] = SCALE8_STAGE2( (s[0] + s[1]) - (s[2] + s[3]) - s[7]);
-        out[5] = SCALE8_STAGE2( (s[0] - s[1]) - s[8] + (s[9] - s[6]));
-        out[6] = SCALE8_STAGE2( (s[0] - s[1]) + (s[8] - s[9]) - s[5]);
-		out[7] = SCALE8_STAGE2( (s[0] + s[1]) + (s[2] + s[3]) - s[4] );
+	out[0] = SCALE8_STAGE2( (s[0] + s[1]) + (s[2] + s[3]) + s[4]);
+	out[1] = SCALE8_STAGE2( (s[0] - s[1]) + (s[8] - s[9]) + s[5]);
+	out[2] = SCALE8_STAGE2( (s[0] - s[1]) - s[8] + (s[9] + s[6]));
+	out[3] = SCALE8_STAGE2( (s[0] + s[1]) - (s[2] + s[3]) + s[7]);
+	out[4] = SCALE8_STAGE2( (s[0] + s[1]) - (s[2] + s[3]) - s[7]);
+	out[5] = SCALE8_STAGE2( (s[0] - s[1]) - s[8] + (s[9] - s[6]));
+	out[6] = SCALE8_STAGE2( (s[0] - s[1]) + (s[8] - s[9]) - s[5]);
+	out[7] = SCALE8_STAGE2( (s[0] + s[1]) + (s[2] + s[3]) - s[4] );
 }
