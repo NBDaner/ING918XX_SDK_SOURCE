@@ -131,6 +131,7 @@ void audio_stop(void)
 
 static void audio_task(void *pdata)
 {
+    static int burst_cnt = 100;
     int input_size, output_size;
     uint8_t *outp;
 #if (AUDIO_CODEC_ALG == AUDIO_CODEC_ALG_SBC)
@@ -183,7 +184,14 @@ static void audio_task(void *pdata)
             }
         }
 #else
-        aud_enc_t.encoder(enc, buf, input_size, outp, output_size);
+        if(burst_cnt == 0)
+        {
+            aud_enc_t.encoder(enc, buf, input_size, outp, output_size);
+            burst_cnt = 100;
+        }
+        else
+            burst_cnt--;
+
 #endif
     }
 }
@@ -244,6 +252,7 @@ void audio_init(void)
 
     audio_input_setup();
     LOG_PRINTF(LOG_LEVEL_INFO,"Initialization completed.");
+    audio_input_start();
 }
 
 static void enc_state_init(audio_encoder_t *enc_t)
