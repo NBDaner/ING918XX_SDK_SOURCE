@@ -18,6 +18,7 @@
 #include "audio_sbc_tables.h"
 #include "audio_sbc_types.h"
 
+static int FrameCnt = 0;
 static void __sbc_analyze_four(const int32_t *in, int32_t *out);
 
 static void __sbc_analyze_eight(const int32_t *in, int32_t *out);
@@ -32,6 +33,25 @@ static void sbc_analyze_eight(sbc_encoder_state *state,
 							  int ch,
 							  int blk);
 
+void printf_int16dump(const void *data, int size)
+{
+    int i;
+    if (size <= 0) return;
+    for (i = 0; i< size; i++){
+        printf("%d ", ((int16_t *)data)[i]);
+    }
+    printf("\n");
+}
+
+void printf_hex8dump(const void *data, int size)
+{
+    int i;
+    if (size <= 0) return;
+    for (i = 0; i< size; i++){
+        printf("%02X ", ((uint8_t *)data)[i]);
+    }
+    printf("\n");
+}
 
 /*
  * Calculates the CRC-8 of the first len bits in data
@@ -350,18 +370,21 @@ int16_t sbc_clip16(int32_t s)
 static int sbc_analyze_audio(sbc_encoder_state *state, sbc_frame *frame)
 {
 	int ch, blk;
+	printf("out->");
 
 	switch (frame->subbands) {
 	case 4:
 		for (ch = 0; ch < frame->channels; ch++)
 			for (blk = 0; blk < frame->blocks; blk++)
 				sbc_analyze_four(state, frame, ch, blk);
+		printf("\n");
 		return frame->blocks * 4;
 
 	case 8:
 		for (ch = 0; ch < frame->channels; ch++)
 			for (blk = 0; blk < frame->blocks; blk++)
 				sbc_analyze_eight(state, frame, ch, blk);
+		printf("\n");
 		return frame->blocks * 8;
 
 	default:
@@ -467,6 +490,20 @@ static int sbc_pack_frame(uint8_t *data, sbc_frame *frame, int len)
 		}
 	}
 
+	printf("DATA1-> %x %x %x\n",data[0],data[1],data[2]);
+//==============================printf scale_factor==============================
+	// printf("SCALE FACTOR->");
+	// for (ch = 0; ch < frame->channels; ch++)
+	// {
+	// 	printf("%s %c%d ","CH", '0',ch);
+	// 	for (sb = 0; sb < frame->subbands; sb++)
+	// 	{
+	// 		printf("%d ",scalefactor[ch][sb]);
+	// 	}
+	// }
+	// printf("\n");
+//===============================================================================
+	printf("DATA2-> %x %x %x\n",data[0],data[1],data[2]);
 	if (frame->mode == SBC_MODE_JOINT_STEREO)
 	{
 		/* like frame->sb_sample but joint stereo */
@@ -535,7 +572,7 @@ static int sbc_pack_frame(uint8_t *data, sbc_frame *frame, int len)
 		produced += frame->subbands;
 		crc_pos += frame->subbands;
 	}
-
+	printf("DATA3-> %x %x %x\n",data[0],data[1],data[2]);
 	for (ch = 0; ch < frame->channels; ch++)
 	{
 		for (sb = 0; sb < frame->subbands; sb++)
@@ -548,14 +585,15 @@ static int sbc_pack_frame(uint8_t *data, sbc_frame *frame, int len)
 			crc_pos += 4;
 		}
 	}
-
+	printf("DATA4-> %x %x %x\n",data[0],data[1],data[2]);
 	/* align the last crc byte */
 	if (crc_pos % 8)
 		crc_header[crc_pos >> 3] <<= 8 - (crc_pos % 8);
-
+	printf("DATA5-> %x %x %x\n",data[0],data[1],data[2]);
 	data[3] = sbc_crc8(crc_header, crc_pos);
+	printf("DATA6-> %x %x %x\n",data[0],data[1],data[2]);
 	sbc_calculate_bits(frame, bits);
-
+	printf("DATA-7> %x %x %x\n",data[0],data[1],data[2]);
 	for (ch = 0; ch < frame->channels; ch++)
 	{
 		for (sb = 0; sb < frame->subbands; sb++)
@@ -563,6 +601,19 @@ static int sbc_pack_frame(uint8_t *data, sbc_frame *frame, int len)
 			levels[ch][sb] = (1 << bits[ch][sb]) - 1;
 		}
 	}
+	printf("DATA8-> %x %x %x\n",data[0],data[1],data[2]);
+//================================printf bitvalue================================
+	// printf("level(bit)->");
+	// for (ch = 0; ch < frame->channels; ch++)
+	// {
+	// 	printf("%s %c%d ","CH", '0',ch);
+	// 	for (sb = 0; sb < frame->subbands; sb++)
+	// 	{
+	// 		printf("%d(%d) ",levels[ch][sb],bits[ch][sb]);
+	// 	}
+	// }
+	// printf("\n");
+//===============================================================================
 
 	for (blk = 0; blk < frame->blocks; blk++)
 	{
@@ -588,13 +639,13 @@ static int sbc_pack_frame(uint8_t *data, sbc_frame *frame, int len)
 			}
 		}
 	}
-
+	printf("DATA9-> %x %x %x\n",data[0],data[1],data[2]);
 	/* align the last byte */
 	if (produced % 8)
 	{
 		data[produced >> 3] <<= 8 - (produced % 8);
 	}
-
+	printf("DATA10-> %x %x %x\n",data[0],data[1],data[2]);
 	return (produced + 7) >> 3;
 }
 
@@ -812,8 +863,21 @@ void sbc_encode(sbc_t *sbc,
 		}
 	}
 
+	//Delimiter and count
+	printf("- - - - - - - - - - - - - - - - - - - -%dth- - - - - - - - - - - - - - - - - - - -\n",FrameCnt++);
+	//printf input data & pcm_sample
+	printf("INPUT %d DATA->",input_len);printf_int16dump(input,input_len);
+	for(ch = 0; ch < sbc->channels; ch++)
+	{
+		printf("CH%d DATA->",ch);printf_int16dump(priv->frame.pcm_sample[ch],priv->frame.subbands * priv->frame.blocks);
+	}
+
 	sbc_analyze_audio(&priv->enc_state, &priv->frame);
 	framelen = sbc_pack_frame(output,&priv->frame, output_len);
+
+	//printf input data & pcm_sample
+	// printf("OUTPUT %d DATA->",output_len);printf_hex8dump(output,output_len);
+	printf("OUTPUT[%x] %d DATA->",output,output_len);printf("%x\n",*((uint8_t *)output));
 
 	//using the output interface
 	for (i=0; i < framelen; i++)
@@ -964,6 +1028,9 @@ static void __sbc_analyze_four(const int32_t *in, int32_t *out)
 	out[1] = SCALE4_STAGE2(-s[0] + s[1] + s[3]);
 	out[2] = SCALE4_STAGE2(-s[0] + s[1] - s[3]);
 	out[3] = SCALE4_STAGE2( s[0] + s[1] - s[2] + s[4]);
+
+	//Print coded output results
+	printf("%d %d %d %d ",out[0],out[1],out[2],out[3]);
 }
 
 static void __sbc_analyze_eight(const int32_t *in, int32_t *out)
@@ -1076,4 +1143,7 @@ static void __sbc_analyze_eight(const int32_t *in, int32_t *out)
 	out[5] = SCALE8_STAGE2( (s[0] - s[1]) - s[8] + (s[9] - s[6]));
 	out[6] = SCALE8_STAGE2( (s[0] - s[1]) + (s[8] - s[9]) - s[5]);
 	out[7] = SCALE8_STAGE2( (s[0] + s[1]) + (s[2] + s[3]) - s[4] );
+
+	//Print coded output results
+	printf("%d %d %d %d %d %d %d %d ",out[0],out[1],out[2],out[3],out[4],out[5],out[6],out[7]);
 }
