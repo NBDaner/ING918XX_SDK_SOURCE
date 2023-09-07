@@ -18,6 +18,9 @@ extern void audio_input_stop(void);
 audio_encoder_t aud_enc_t;
 void *enc = NULL;
 
+#define RAM_SIZE 1024 // RAM的大小，单位为字节
+uint8_t RAM_D[RAM_SIZE] __attribute__((section(".ARM.__at_0x2000E000")));
+
 uint8_t data_buffer[VOICE_BUF_BLOCK_NUM][VOICE_BUF_BLOCK_SIZE] = {0};
 uint16_t block_index;
 uint16_t byte_index;
@@ -141,7 +144,8 @@ static void audio_task(void *pdata)
     input_size = aud_enc_t.sample_buf.size;
     output_size = aud_enc_t.sample_buf.size;
 #endif
-    outp = malloc(output_size * sizeof(uint8_t));
+    // outp = malloc(output_size * sizeof(uint8_t));
+    outp = RAM_D;
 
 #if (OVER_SAMPLING_MASK != 0)
     int oversample_cnt = 0;

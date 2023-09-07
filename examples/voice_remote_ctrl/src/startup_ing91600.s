@@ -71,6 +71,8 @@ Reset_Handler   PROC
                 ; this push is consumed by main
                 PUSH    {R1, LR}
 
+				IMPORT 	init_memory
+				BL		init_memory
                 LDR     R0, =__scatterload
                 BX      R0
                 

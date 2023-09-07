@@ -94,6 +94,11 @@ uint32_t query_deep_sleep_allowed(void *dummy, void *user_data)
     return 0;
 }
 
+void init_memory(void)
+{
+    SYSCTRL_CacheControl(SYSCTRL_MEM_BLOCK_AS_CACHE, SYSCTRL_MEM_BLOCK_AS_SYS_MEM);
+}
+
 #ifdef MIC_DBG
 uint16_t buffer[12600];
 int index = 0;
