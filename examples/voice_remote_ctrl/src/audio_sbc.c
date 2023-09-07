@@ -490,20 +490,19 @@ static int sbc_pack_frame(uint8_t *data, sbc_frame *frame, int len)
 		}
 	}
 
-	printf("DATA1-> %x %x %x\n",data[0],data[1],data[2]);
 //==============================printf scale_factor==============================
-	// printf("SCALE FACTOR->");
-	// for (ch = 0; ch < frame->channels; ch++)
-	// {
-	// 	printf("%s %c%d ","CH", '0',ch);
-	// 	for (sb = 0; sb < frame->subbands; sb++)
-	// 	{
-	// 		printf("%d ",scalefactor[ch][sb]);
-	// 	}
-	// }
-	// printf("\n");
+	printf("SCALE FACTOR->");
+	for (ch = 0; ch < frame->channels; ch++)
+	{
+		printf("%s %c%d ","CH", '0',ch);
+		for (sb = 0; sb < frame->subbands; sb++)
+		{
+			printf("%d ",scalefactor[ch][sb]);
+		}
+	}
+	printf("\n");
 //===============================================================================
-	printf("DATA2-> %x %x %x\n",data[0],data[1],data[2]);
+
 	if (frame->mode == SBC_MODE_JOINT_STEREO)
 	{
 		/* like frame->sb_sample but joint stereo */
@@ -572,7 +571,7 @@ static int sbc_pack_frame(uint8_t *data, sbc_frame *frame, int len)
 		produced += frame->subbands;
 		crc_pos += frame->subbands;
 	}
-	printf("DATA3-> %x %x %x\n",data[0],data[1],data[2]);
+
 	for (ch = 0; ch < frame->channels; ch++)
 	{
 		for (sb = 0; sb < frame->subbands; sb++)
@@ -585,15 +584,14 @@ static int sbc_pack_frame(uint8_t *data, sbc_frame *frame, int len)
 			crc_pos += 4;
 		}
 	}
-	printf("DATA4-> %x %x %x\n",data[0],data[1],data[2]);
+
 	/* align the last crc byte */
 	if (crc_pos % 8)
 		crc_header[crc_pos >> 3] <<= 8 - (crc_pos % 8);
-	printf("DATA5-> %x %x %x\n",data[0],data[1],data[2]);
+
 	data[3] = sbc_crc8(crc_header, crc_pos);
-	printf("DATA6-> %x %x %x\n",data[0],data[1],data[2]);
 	sbc_calculate_bits(frame, bits);
-	printf("DATA-7> %x %x %x\n",data[0],data[1],data[2]);
+
 	for (ch = 0; ch < frame->channels; ch++)
 	{
 		for (sb = 0; sb < frame->subbands; sb++)
@@ -601,18 +599,18 @@ static int sbc_pack_frame(uint8_t *data, sbc_frame *frame, int len)
 			levels[ch][sb] = (1 << bits[ch][sb]) - 1;
 		}
 	}
-	printf("DATA8-> %x %x %x\n",data[0],data[1],data[2]);
+
 //================================printf bitvalue================================
-	// printf("level(bit)->");
-	// for (ch = 0; ch < frame->channels; ch++)
-	// {
-	// 	printf("%s %c%d ","CH", '0',ch);
-	// 	for (sb = 0; sb < frame->subbands; sb++)
-	// 	{
-	// 		printf("%d(%d) ",levels[ch][sb],bits[ch][sb]);
-	// 	}
-	// }
-	// printf("\n");
+	printf("level(bit)->");
+	for (ch = 0; ch < frame->channels; ch++)
+	{
+		printf("%s %c%d ","CH", '0',ch);
+		for (sb = 0; sb < frame->subbands; sb++)
+		{
+			printf("%d(%d) ",levels[ch][sb],bits[ch][sb]);
+		}
+	}
+	printf("\n");
 //===============================================================================
 
 	for (blk = 0; blk < frame->blocks; blk++)
@@ -639,13 +637,13 @@ static int sbc_pack_frame(uint8_t *data, sbc_frame *frame, int len)
 			}
 		}
 	}
-	printf("DATA9-> %x %x %x\n",data[0],data[1],data[2]);
+
 	/* align the last byte */
 	if (produced % 8)
 	{
 		data[produced >> 3] <<= 8 - (produced % 8);
 	}
-	printf("DATA10-> %x %x %x\n",data[0],data[1],data[2]);
+
 	return (produced + 7) >> 3;
 }
 
@@ -876,8 +874,7 @@ void sbc_encode(sbc_t *sbc,
 	framelen = sbc_pack_frame(output,&priv->frame, output_len);
 
 	//printf input data & pcm_sample
-	// printf("OUTPUT %d DATA->",output_len);printf_hex8dump(output,output_len);
-	printf("OUTPUT[%x] %d DATA->",output,output_len);printf("%x\n",*((uint8_t *)output));
+	printf("OUTPUT %d DATA->",output_len);printf_hex8dump(output,output_len);
 
 	//using the output interface
 	for (i=0; i < framelen; i++)

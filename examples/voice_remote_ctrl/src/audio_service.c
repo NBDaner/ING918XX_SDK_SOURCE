@@ -188,14 +188,7 @@ static void audio_task(void *pdata)
             }
         }
 #else
-        if(burst_cnt == 0)
-        {
             aud_enc_t.encoder(enc, buf, input_size, outp, output_size);
-            burst_cnt = 100;
-        }
-        else
-            burst_cnt--;
-
 #endif
     }
 }
