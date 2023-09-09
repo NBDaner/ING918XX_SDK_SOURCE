@@ -33,21 +33,39 @@ static void sbc_analyze_eight(sbc_encoder_state *state,
 							  int ch,
 							  int blk);
 
-void printf_int16dump(const void *data, int size)
+void printf_int16dump(const void *data, int size, int tab_size)
 {
-    int i;
+    int i,j;
     if (size <= 0) return;
-    for (i = 0; i< size; i++){
-        printf("%d ", ((int16_t *)data)[i]);
+    for (i = 0; i < size ; i++)
+	{
+		if (i%16==0 && i!=0)
+		{
+			printf("\n");
+			for(j = 0; j < tab_size; j++)
+			{
+				printf(" ");
+			}
+		}
+		printf("%d ", ((int16_t *)data)[i]);
     }
     printf("\n");
 }
 
-void printf_hex8dump(const void *data, int size)
+void printf_hex8dump(const void *data, int size, int tab_size)
 {
-    int i;
-    if (size <= 0) return;
-    for (i = 0; i< size; i++){
+    int i,j;
+	if (size <= 0) return;
+    for (i = 0; i < size ; i++)
+	{
+		if (i%16==0 && i!=0)
+		{
+			printf("\n");
+			for(j = 0; j < tab_size; j++)
+			{
+				printf(" ");
+			}
+		}
         printf("%02X ", ((uint8_t *)data)[i]);
     }
     printf("\n");
@@ -861,20 +879,25 @@ void sbc_encode(sbc_t *sbc,
 		}
 	}
 
+#if defined(DEBUG_INFO)
 	//Delimiter and count
-	printf("- - - - - - - - - - - - - - - - - - - -%dth- - - - - - - - - - - - - - - - - - - -\n",FrameCnt++);
+	printf("<------------------------------------- %dth ------------------------------------->\n",FrameCnt++);
 	//printf input data & pcm_sample
-	printf("INPUT %d DATA->",input_len);printf_int16dump(input,input_len);
+	char a[16];
+	sprintf(a,"INPUT %d DATA->",input_len);printf("%s",a);printf_int16dump(input,input_len,16);
 	for(ch = 0; ch < sbc->channels; ch++)
 	{
-		printf("CH%d DATA->",ch);printf_int16dump(priv->frame.pcm_sample[ch],priv->frame.subbands * priv->frame.blocks);
+		printf("CH%d DATA->",ch);printf_int16dump(priv->frame.pcm_sample[ch],priv->frame.subbands * priv->frame.blocks, 10);
 	}
+#endif
 
 	sbc_analyze_audio(&priv->enc_state, &priv->frame);
 	framelen = sbc_pack_frame(output,&priv->frame, output_len);
 
+#if defined(DEBUG_INFO)
 	//printf input data & pcm_sample
-	printf("OUTPUT %d DATA->",output_len);printf_hex8dump(output,output_len);
+	printf("OUTPUT %d DATA->",output_len);printf_hex8dump(output,output_len,17);printf("\n");
+#endif
 
 	//using the output interface
 	for (i=0; i < framelen; i++)
