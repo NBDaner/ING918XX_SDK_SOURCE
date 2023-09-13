@@ -249,7 +249,10 @@ void audio_init(void)
 
     audio_input_setup();
     LOG_PRINTF(LOG_LEVEL_INFO,"Initialization completed.");
+    
+#if defined(DEBUG_INFO)
     audio_input_start();
+#endif
 }
 
 static void enc_state_init(audio_encoder_t *enc_t)

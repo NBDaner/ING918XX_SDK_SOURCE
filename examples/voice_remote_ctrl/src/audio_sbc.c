@@ -388,21 +388,28 @@ int16_t sbc_clip16(int32_t s)
 static int sbc_analyze_audio(sbc_encoder_state *state, sbc_frame *frame)
 {
 	int ch, blk;
+
+#if defined(DEBUG_INFO)
 	printf("out->");
+#endif
 
 	switch (frame->subbands) {
 	case 4:
 		for (ch = 0; ch < frame->channels; ch++)
 			for (blk = 0; blk < frame->blocks; blk++)
 				sbc_analyze_four(state, frame, ch, blk);
+#if defined(DEBUG_INFO)
 		printf("\n");
+#endif
 		return frame->blocks * 4;
 
 	case 8:
 		for (ch = 0; ch < frame->channels; ch++)
 			for (blk = 0; blk < frame->blocks; blk++)
 				sbc_analyze_eight(state, frame, ch, blk);
+#if defined(DEBUG_INFO)
 		printf("\n");
+#endif
 		return frame->blocks * 8;
 
 	default:
@@ -509,6 +516,7 @@ static int sbc_pack_frame(uint8_t *data, sbc_frame *frame, int len)
 	}
 
 //==============================printf scale_factor==============================
+#if defined(DEBUG_INFO)
 	printf("SCALE FACTOR->");
 	for (ch = 0; ch < frame->channels; ch++)
 	{
@@ -519,6 +527,7 @@ static int sbc_pack_frame(uint8_t *data, sbc_frame *frame, int len)
 		}
 	}
 	printf("\n");
+#endif
 //===============================================================================
 
 	if (frame->mode == SBC_MODE_JOINT_STEREO)
@@ -619,6 +628,7 @@ static int sbc_pack_frame(uint8_t *data, sbc_frame *frame, int len)
 	}
 
 //================================printf bitvalue================================
+#if defined(DEBUG_INFO)
 	printf("level(bit)->");
 	for (ch = 0; ch < frame->channels; ch++)
 	{
@@ -629,6 +639,7 @@ static int sbc_pack_frame(uint8_t *data, sbc_frame *frame, int len)
 		}
 	}
 	printf("\n");
+#endif
 //===============================================================================
 
 	for (blk = 0; blk < frame->blocks; blk++)
@@ -1049,8 +1060,11 @@ static void __sbc_analyze_four(const int32_t *in, int32_t *out)
 	out[2] = SCALE4_STAGE2(-s[0] + s[1] - s[3]);
 	out[3] = SCALE4_STAGE2( s[0] + s[1] - s[2] + s[4]);
 
+
+#if defined(DEBUG_INFO)
 	//Print coded output results
 	printf("%d %d %d %d ",out[0],out[1],out[2],out[3]);
+#endif
 }
 
 static void __sbc_analyze_eight(const int32_t *in, int32_t *out)
@@ -1164,6 +1178,8 @@ static void __sbc_analyze_eight(const int32_t *in, int32_t *out)
 	out[6] = SCALE8_STAGE2( (s[0] - s[1]) + (s[8] - s[9]) - s[5]);
 	out[7] = SCALE8_STAGE2( (s[0] + s[1]) + (s[2] + s[3]) - s[4] );
 
+#if defined(DEBUG_INFO)
 	//Print coded output results
 	printf("%d %d %d %d %d %d %d %d ",out[0],out[1],out[2],out[3],out[4],out[5],out[6],out[7]);
+#endif
 }
