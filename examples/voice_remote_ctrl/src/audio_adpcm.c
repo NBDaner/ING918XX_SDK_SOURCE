@@ -57,13 +57,18 @@ static void adpcm_update(adpcm_state_t* state, const uint8_t sample)
 void adpcm_encode(adpcm_enc_t *adpcm, pcm_sample_t *input, int input_size, void *output, int output_size)
 {
     pcm_sample_t *sample = input;
-    int i;
-    
+    int k;
+
+#if defined(DEBUG_INFO)   
     printf("Raw Data-> ");
-    for (i = 0; i < input_size; i++)
+#endif
+
+    for (k = 0; k < input_size; k++)
     {
-        printf("%d ",sample[i]);
-        int32_t diff = (int32_t)sample[i] - adpcm->state.predicated;
+#if defined(DEBUG_INFO)
+        printf("%d ",sample[k]);
+#endif
+        int32_t diff = (int32_t)sample[k] - adpcm->state.predicated;
         uint8_t new_sample = 0;
         uint8_t mask = 4;
         int16_t temp_step_size = stepsizeTable[adpcm->state.index];
@@ -100,8 +105,9 @@ void adpcm_encode(adpcm_enc_t *adpcm, pcm_sample_t *input, int input_size, void 
 
         adpcm_update(&adpcm->state, new_sample);       
     }
+#if defined(DEBUG_INFO)
     printf("\n");
-
+#endif
 }
 
 void adpcm_decode(adpcm_dec_t *adpcm, uint8_t data)
