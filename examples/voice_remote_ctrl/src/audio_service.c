@@ -244,7 +244,7 @@ void audio_init(void)
                "b",
                1024,
                NULL,
-               (configMAX_PRIORITIES - 14),
+               (configMAX_PRIORITIES - 1),
                NULL);
 
     audio_input_setup();
