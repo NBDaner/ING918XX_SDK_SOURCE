@@ -75,6 +75,11 @@ void setup_peripherals(void)
                               | (1 << SYSCTRL_ITEM_APB_GPIO1)
                               | (1 << SYSCTRL_ITEM_APB_TMR2)
                               | (1 << SYSCTRL_ITEM_APB_PinCtrl));
+
+    PINCTRL_SetPadMux(27, IO_SOURCE_GPIO);
+    GIO_SetDirection(27, GIO_DIR_OUTPUT);
+    GIO_WriteValue(27, 1);
+    
 #endif
 }
 
