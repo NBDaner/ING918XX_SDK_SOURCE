@@ -188,7 +188,7 @@ static void audio_task(void *pdata)
             }
         }
 #else
-            aud_enc_t.encoder(enc, buf, input_size, outp, output_size);
+        aud_enc_t.encoder(enc, buf, input_size, outp, output_size);
 #endif
     }
 }
