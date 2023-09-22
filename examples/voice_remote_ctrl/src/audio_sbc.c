@@ -699,7 +699,7 @@ static void sbc_set_defaults(sbc_t *sbc, uint8_t flags)
 	sbc->subbands = SBC_SB_4;
 	sbc->blocks = SBC_BLK_16;
     sbc->allocation = SBC_AM_SNR;
-	sbc->bitpool = 16;
+	sbc->bitpool = 32;
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 	sbc->endian = SBC_LE;
 #elif __BYTE_ORDER == __BIG_ENDIAN
